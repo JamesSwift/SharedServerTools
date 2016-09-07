@@ -1,0 +1,79 @@
+
+#Redirect non-www to www
+server {
+	listen 80;
+        listen [::]:80;
+
+#__COMMENT__	listen 443 ssl;
+#__COMMENT__	listen [::]:443 ssl;
+#__COMMENT__	ssl_certificate      /etc/letsencrypt/live/__SSL_DOMAIN__/fullchain.pem;
+#__COMMENT__ 	ssl_certificate_key  /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem;
+
+	server_name          __DOMAIN__;
+
+	return 301 $scheme://www.__DOMAIN__$request_uri;
+}
+
+
+server {
+        listen 80;
+        listen [::]:80;
+
+        # SSL configuration
+
+#__COMMENT__         listen 443 ssl;
+#__COMMENT__         listen [::]:443 ssl;
+#__COMMENT__         ssl_certificate /etc/letsencrypt/live/__SSL_DOMAIN__/fullchain.pem;
+#__COMMENT__         ssl_certificate_key /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem;
+
+	root /home/__USERNAME__/www/;
+
+	index index.html index.php;
+
+        server_name www.__DOMAIN__;
+
+	#######
+	# Lets-Encrypt rule
+        location ~ /.well-known {
+                allow all;
+        }
+
+	#######
+	# Rewrite URIs
+	
+
+	#######	
+	# Deny locations
+
+        # deny access to dot files
+        location ~ /\. {
+                deny all;
+        }
+
+	#######
+	# Caching
+
+        location ~*  \.(jpg|jpeg|png|gif|ico|css|js)$ {
+                expires 365d;
+        }
+
+	#######
+	# Default routes
+
+        location / {
+
+                # Attempt to serve request as file, a directory,
+                # then fall back to displaying a 404.
+                try_files $uri $uri/ =404;
+        }
+
+	######
+	# PHP Config
+
+        location ~ \.php$ {
+                include snippets/fastcgi-php.conf;
+                fastcgi_pass unix:/run/php/__USERNAME__.sock;
+        }
+
+}
+

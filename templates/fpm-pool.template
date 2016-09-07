@@ -1,0 +1,22 @@
+[__USERNAME__]
+user = __USERNAME__
+group = __USERNAME__
+
+listen = /run/php/__USERNAME__.sock
+listen.owner = www-data
+listen.group = www-data
+
+pm = dynamic
+pm.max_children = 20
+
+; The number of child processes created on startup.
+pm.start_servers = 2
+
+; The desired minimum number of idle server processes.
+pm.min_spare_servers = 2
+
+; The desired maximum number of idle server processes.
+pm.max_spare_servers = 5
+
+; The number of seconds after which an idle process will be killed.
+pm.process_idle_timeout = 5s;
