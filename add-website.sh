@@ -1,4 +1,9 @@
 #!/bin/bash
+
+#vars
+SCRIPT_PATH=`realpath $0`
+SCRIPT_DIR=`dirname $SCRIPT_PATH`
+
 echo "Creating a new website."
 echo "Before starting, ensure that the domain you are about to setup points to the current server."
 read -rsp $"Press any key to continue..." -n 1 key
@@ -24,13 +29,13 @@ git config --local receive.denyCurrentBranch ignore
 
 
 echo "Adding hook to auto checkout pushed commits:"
-cp /root/templates/git-hook.template .git/hooks/post-receive
+cp ${SCRIPT_DIR}/templates/git-hook.template .git/hooks/post-receive
 sed -i "s/__USERNAME__/${username}/g" .git/hooks/post-receive
 chmod +x .git/hooks/post-receive
 chown -R ${username}.${username} ./
 
 echo "Creating nginx website config file in /etc/nginx/sites-available/${domain}"
-cp /root/templates/nginx-website.template /etc/nginx/sites-available/${domain}
+cp ${SCRIPT_DIR}/templates/nginx-website.template /etc/nginx/sites-available/${domain}
 sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
 sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
 
@@ -40,7 +45,7 @@ ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
 
 
 echo "Creating php-fpm pool config file in /etc/php/7.0/pfm/pool.d/${username}.conf"
-cp /root/templates/fpm-pool.template /etc/php/7.0/fpm/pool.d/${username}.conf
+cp ${SCRIPT_DIR}/templates/fpm-pool.template /etc/php/7.0/fpm/pool.d/${username}.conf
 sed -i "s/__USERNAME__/${username}/g" /etc/php/7.0/fpm/pool.d/${username}.conf
 
 
@@ -51,7 +56,7 @@ service nginx reload
 
 
 echo "Obtaining ssl certificate:"
-certbot-auto certonly -a webroot --webroot-path=/home/${username}/www -d ${domain}
+certbot-auto certonly -a webroot --webroot-path=/home/${username}/www -d ${domain} -d www.${domain}
 
 
 echo "Installing certificate:"

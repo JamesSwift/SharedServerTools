@@ -7,7 +7,9 @@ server {
 #__COMMENT__	listen 443 ssl;
 #__COMMENT__	listen [::]:443 ssl;
 #__COMMENT__	ssl_certificate      /etc/letsencrypt/live/__SSL_DOMAIN__/fullchain.pem;
-#__COMMENT__ 	ssl_certificate_key  /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem;
+#__COMMENT__	ssl_certificate_key  /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem;
+
+        include snippets/ssl-params.conf;
 
 	server_name          __DOMAIN__;
 
@@ -25,6 +27,8 @@ server {
 #__COMMENT__         listen [::]:443 ssl;
 #__COMMENT__         ssl_certificate /etc/letsencrypt/live/__SSL_DOMAIN__/fullchain.pem;
 #__COMMENT__         ssl_certificate_key /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem;
+
+        include snippets/ssl-params.conf;
 
 	root /home/__USERNAME__/www/;
 
