@@ -4,8 +4,8 @@ server {
 	listen 80;
         listen [::]:80;
 
-#__COMMENT__	listen 443 ssl;
-#__COMMENT__	listen [::]:443 ssl;
+#__COMMENT__	listen 443 ssl http2;
+#__COMMENT__	listen [::]:443 ssl http2;
 #__COMMENT__	ssl_certificate      /etc/letsencrypt/live/__SSL_DOMAIN__/fullchain.pem;
 #__COMMENT__	ssl_certificate_key  /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem;
 
@@ -23,8 +23,8 @@ server {
 
         # SSL configuration
 
-#__COMMENT__         listen 443 ssl;
-#__COMMENT__         listen [::]:443 ssl;
+#__COMMENT__         listen 443 ssl http2;
+#__COMMENT__         listen [::]:443 ssl http2;
 #__COMMENT__         ssl_certificate /etc/letsencrypt/live/__SSL_DOMAIN__/fullchain.pem;
 #__COMMENT__         ssl_certificate_key /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem;
 
