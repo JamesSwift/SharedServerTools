@@ -1,0 +1,16 @@
+# This router handles aliasing using traditional /etc/aliases type 
+# files.
+#
+#### NB You must ensure that /etc/exim/virutual/${domain} file exist
+####
+#### This works with the standard "name : destination" alias format
+# Domain aliases
+vdomain_aliases:
+  debug_print = "R: vdomain_aliases for $local_part@$domain"
+  driver = redirect
+  allow_fail
+  allow_defer
+  domains = dsearch;/etc/exim4/virtual
+  data = ${lookup{$local_part}lsearch*@{/etc/exim4/virtual/$domain}}
+  qualify_preserve_domain
+

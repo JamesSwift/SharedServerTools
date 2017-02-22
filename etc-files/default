@@ -1,0 +1,41 @@
+server {
+        listen 80 default_server;
+        listen [::]:80 default_server;
+
+        # SSL configuration
+        listen 443 ssl default_server;
+        listen [::]:443 ssl default_server;
+        include snippets/ssl-params.conf;
+
+        ssl_certificate /etc/letsencrypt/live/__HOSTNAME__FULL__/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/__HOSTNAME_FULL__/privkey.pem;
+
+
+        root /var/www/html;
+
+        index index.html index.htm index.php;
+
+        server_name _;
+
+		location ~ /.well-known {
+                allow all;
+        }
+
+        location / {
+                # First attempt to serve request as file, then
+                # as directory, then fall back to displaying a 404.
+                try_files $uri $uri/ =404;
+        }
+
+
+        location ~ \.php$ {
+                include snippets/fastcgi-php.conf;
+                fastcgi_pass unix:/run/php/php7.0-fpm.sock;
+        }
+
+        #Deny access to dot files
+        location ~ /\. {
+                deny all;
+        }
+}
+

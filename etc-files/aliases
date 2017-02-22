@@ -1,0 +1,4 @@
+# See man 5 aliases for format
+postmaster:			root
+www-data:			root
+root:				__ROOT_EMAIL__
