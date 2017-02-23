@@ -262,7 +262,24 @@ echo
 echo "Setting up nginx:"
 chmod 770 -R /var/www
 chown -R root.www-data /var/www
-mv /var/www/html/index* /var/www/html/index.html
+mv /var/www/html/index* /var/www/html/index.html 2> /dev/null
+
+#Generate new dhparam
+if [ -f "/etc/ssl/certs/dhparam.pem" ]
+then
+	echo "It seems you have already generated a dhparam.pem file."
+        read -p "Would you like to generate a new one (it will take a lon time!)? [y/N]" -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]
+        then
+		openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
+	fi
+else 
+	#File not found, generate a new one
+	echo "You need to generate a strong DHE parameter to secure SSL requests."
+	openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
+fi
+
 apply_template /etc/nginx/snippets/ssl-params.conf ssl-params.conf
 apply_template /etc/nginx/nginx.conf nginx.conf
 apply_template /etc/nginx/sites-available/default default
@@ -270,7 +287,7 @@ service nginx restart
 echo "Done"
 echo
 echo
-echo "The script needs to obtain an SSL cert to continue. Please follow the prompts that follow."
+echo "The script needs to obtain an SSL cert to continue setup. Please follow the prompts that follow."
 echo
 read -n 1 -s -p "Press any key to continue"
 
@@ -282,3 +299,10 @@ echo "=============="
 echo "SSL Certifcate"
 echo "=============="
 echo
+certbot-auto certonly -a webroot --webroot-path=/var/www/html -d ${HOSTNAME_FULL}
+echo
+echo "Installing sertificate:"
+sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
+service nginx reload
+echo "Done"
+
