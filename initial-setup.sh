@@ -46,7 +46,7 @@ apply_template(){
 	sed -i "s/__HOSTNAME_SHORT__/${HOSTNAME_SHORT}/g" $1"~"
 	sed -i "s/__PRIMARY_IP__/${PRIMARY_IP}/g" $1"~"
 
-	mv $1 $1".backup"
+	mv $1 $1".backup" 2> /dev/null
 	mv $1"~" $1
 	return 0;
 }
@@ -210,3 +210,75 @@ then
 	fi
 fi
 
+
+
+############################################################################
+# Install software
+
+clear
+echo "======================"
+echo "Instal Server Software"
+echo "======================"
+echo
+echo "The script will now install the software needed for the web server's operation from apt. Namely:"
+echo "- git"
+echo "- exim4"
+echo "- nginx"
+echo "- php7.0-fpm"
+echo "- mysql-server"
+echo "- fail2ban"
+echo
+
+apt install -y git exim4 nginx php7.0-fpm mysql-server fail2ban
+
+echo 
+echo "The script will now download and install the latest version of certbot-auto"
+
+wget https://dl.eff.org/certbot-auto
+chmod a+x certbot-auto
+mv ./certbot-auto /usr/local/sbin/
+certbot-auto
+
+######################################################################################################
+# Configure software
+
+clear
+echo "========================="
+echo "Configure Server Software"
+echo "========================="
+echo
+echo "Enabling sshd jail in fail2ban:"
+apply_template /etc/fail2ban/jail.local jail.local
+service fail2ban restart
+echo "Done"
+echo
+echo
+echo "Setting up php:"
+apply_template /etc/php/7.0/fpm/php.ini php.ini
+service php7.0-fpm restart
+echo "Done"
+echo
+echo
+echo "Setting up nginx:"
+chmod 770 -R /var/www
+chown -R root.www-data /var/www
+mv /var/www/html/index* /var/www/html/index.html
+apply_template /etc/nginx/snippets/ssl-params.conf ssl-params.conf
+apply_template /etc/nginx/nginx.conf nginx.conf
+apply_template /etc/nginx/sites-available/default default
+service nginx restart
+echo "Done"
+echo
+echo
+echo "The script needs to obtain an SSL cert to continue. Please follow the prompts that follow."
+echo
+read -n 1 -s -p "Press any key to continue"
+
+########################################################################
+# SSL Certificate
+
+clear
+echo "=============="
+echo "SSL Certifcate"
+echo "=============="
+echo
