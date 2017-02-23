@@ -69,5 +69,3 @@ service nginx reload
 
 
 echo "New website has been added."
-
-
