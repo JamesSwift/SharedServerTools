@@ -158,6 +158,18 @@ fi
 
 
 
+echo "Some VPS providers install ssh public certificates in /root/.ssh/authorized_keys"
+echo "Generally this is to allow them to provide support, but it might be considered a security risk."
+read -p "Would you like to reset the authorized_keys file now?? [y/N]" -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+	mv /root/.ssh/authorized_keys /root/.ssh/authorized_keys.backup
+	touch /root/.ssh/authorized_keys
+fi
+
+
+
 
 #################################################
 # Setup hostname
@@ -210,6 +222,7 @@ then
 	fi
 fi
 
+apply_template /etc/mailname mailname
 
 
 ############################################################################
@@ -254,7 +267,7 @@ echo "Done"
 echo
 echo
 echo "Setting up php:"
-apply_template /etc/php/7.0/fpm/php.ini php.ini
+apply_template /etc/php/7.0/fpm/conf.d/php.ini php.ini
 service php7.0-fpm restart
 echo "Done"
 echo
@@ -267,8 +280,8 @@ mv /var/www/html/index* /var/www/html/index.html 2> /dev/null
 #Generate new dhparam
 if [ -f "/etc/ssl/certs/dhparam.pem" ]
 then
-	echo "It seems you have already generated a dhparam.pem file."
-        read -p "Would you like to generate a new one (it will take a lon time!)? [y/N]" -n 1 -r
+	echo "It seems you already have a dhparam.pem file (which strengthens SSL security)."
+        read -p "Would you like to generate a new one anyway (warning: it will take a long time!)? [y/N]" -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]
         then
