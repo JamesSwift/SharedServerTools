@@ -10,6 +10,6 @@ echo Starting rsync backup task
 echo
 echo Backing up to: $backup_location
 echo 
-rsync -aAXHzv --rsync-path="rsync --fake-super" --ignore-errors --numeric-ids --delete --exclude={"/var/lib/lxcfs/*","/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/lost+found"} / $backup_location
+rsync -aAxXHzv --rsync-path="rsync --fake-super" --ignore-errors --numeric-ids --delete --exclude={"/var/lib/lxcfs/*","/dev/*","/proc/*","/sys/*","/tmp/*","/run/*","/lost+found"} / $backup_location
 echo 
 echo Backup Complete
