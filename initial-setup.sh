@@ -312,7 +312,7 @@ echo "=============="
 echo "SSL Certifcate"
 echo "=============="
 echo
-certbot-auto certonly -a webroot --webroot-path=/var/www/html -d ${HOSTNAME_FULL}
+certbot-auto --nginx --no-redirect -d ${HOSTNAME_FULL}
 echo
 echo "Installing sertificate:"
 sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default

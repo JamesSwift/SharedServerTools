@@ -15,11 +15,7 @@ server {
 
         index index.html index.htm index.php;
 
-        server_name _;
-
-		location ~ /.well-known {
-                allow all;
-        }
+        server_name __HOSTNAME_FULL__;
 
         location / {
                 # First attempt to serve request as file, then

@@ -36,11 +36,6 @@ server {
 
         server_name www.__DOMAIN__;
 
-	#######
-	# Lets-Encrypt rule
-        location ~ /.well-known {
-                allow all;
-        }
 
 	#######
 	# Rewrite URIs
