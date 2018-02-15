@@ -56,8 +56,8 @@ service nginx reload
 
 
 echo "Obtaining ssl certificate:"
-certbot-auto --nginx --no-redirect -d ${domain} -d www.${domain}
-
+#certbot-auto --nginx --no-redirect -d ${domain} -d www.${domain}
+certbot-auto certonly --webroot --webroot-path /home/${username}/www -d ${domain} -d www.${domain}
 
 echo "Installing certificate:"
 sed -i "s/__SSL_DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
