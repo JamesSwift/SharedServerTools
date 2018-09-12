@@ -7,8 +7,8 @@ read domain
 
 rm /etc/nginx/sites-enabled/$domain
 rm /etc/nginx/sites-available/$domain
-rm /etc/php/7.0/fpm/pool.d/${username}.conf
-service php7.0-fpm restart
+rm /etc/php/7.*/fpm/pool.d/${username}.conf
+service php7.2-fpm restart
 service nginx restart
 deluser www-data $username
 deluser $username

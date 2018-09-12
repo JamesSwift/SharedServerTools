@@ -266,8 +266,8 @@ echo "Done"
 echo
 echo
 echo "Setting up php:"
-apply_template /etc/php/7.0/fpm/conf.d/php.ini php.ini
-service php7.0-fpm restart
+apply_template /etc/php/7.*/fpm/conf.d/php.ini php.ini
+service php7.2-fpm restart
 echo "Done"
 echo
 echo
@@ -299,7 +299,7 @@ service nginx restart
 echo "Done"
 echo
 echo
-echo "The script needs to obtain an SSL cert to continue setup. Please follow the prompts that follow."
+echo "The script needs to install certbot and obtain an SSL cert to continue setup. Please follow the prompts that follow."
 echo
 read -n 1 -s -p "Press any key to continue"
 
@@ -311,7 +311,7 @@ echo "=============="
 echo "SSL Certifcate"
 echo "=============="
 echo
-certbot-auto certonly --agree-tos --webroot --webroot-path /var/www/ -d ${HOSTNAME_FULL}
+certbot-auto certonly --agree-tos --webroot --webroot-path /var/www/html -d ${HOSTNAME_FULL}
 echo
 echo "Installing certificate:"
 sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
