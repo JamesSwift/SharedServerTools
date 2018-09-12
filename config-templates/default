@@ -29,6 +29,10 @@ server {
                 fastcgi_pass unix:/run/php/php7.0-fpm.sock;
         }
 
+		location ~ /.well-known { 
+			allow all;
+		}
+		
         #Deny access to dot files
         location ~ /\. {
                 deny all;

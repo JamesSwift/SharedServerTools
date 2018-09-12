@@ -237,12 +237,12 @@ echo "The script will now install the software needed for the web server's opera
 echo "- git"
 echo "- exim4"
 echo "- nginx"
-echo "- php7.0-fpm"
-echo "- mysql-server"
+echo "- php-fpm"
+echo "- mariadb-server"
 echo "- fail2ban"
 echo
 
-apt install -y git exim4 nginx php7.0-fpm mysql-server fail2ban
+apt install -y git exim4 nginx php-fpm mariadb-server fail2ban
 
 echo 
 echo "The script will now download and install the latest version of certbot-auto"
@@ -250,7 +250,6 @@ echo "The script will now download and install the latest version of certbot-aut
 wget https://dl.eff.org/certbot-auto
 chmod a+x certbot-auto
 mv ./certbot-auto /usr/local/sbin/
-certbot-auto
 
 ######################################################################################################
 # Configure software
@@ -312,9 +311,9 @@ echo "=============="
 echo "SSL Certifcate"
 echo "=============="
 echo
-certbot-auto --nginx --no-redirect -d ${HOSTNAME_FULL}
+certbot-auto certonly --agree-tos --webroot --webroot-path /var/www/ -d ${HOSTNAME_FULL}
 echo
-echo "Installing sertificate:"
+echo "Installing certificate:"
 sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
 service nginx reload
 echo "Done"
