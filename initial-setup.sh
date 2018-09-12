@@ -61,7 +61,7 @@ HOSTNAME_SHORT=`hostname`
 HOSTNAME_FULL=`hostname -f`
 PRIMARY_IP=`hostname -I`
 
-clear
+#clear
 
 
 #############################################################################
@@ -71,7 +71,7 @@ echo "================="
 echo "SharedServerTools"
 echo "================="
 echo
-echo "This script is designed to turn a clean ubuntu installation into a working, secured shared web server."
+echo "This script is designed to turn a clean ubuntu 18.04 installation into a working, secured shared web server."
 echo "Ideally this script should be run as the very first thing you do with your new VPS. It will alter config files with no regard for their current state."
 echo 
 echo "The process is quite simple, but you will need to answer some questions first:"
@@ -103,7 +103,7 @@ then
 	echo
 	if [[ $REPLY =~ ^[Yy]$ ]]
 	then
-		clear
+		#clear
 		echo "After rebooting, run this script again to continue setup."
 		echo
 		reboot
@@ -113,7 +113,7 @@ fi
 ############################################
 # Secure root account
 
-clear
+#clear
 
 echo "================"
 echo "Account Security"
@@ -174,7 +174,7 @@ fi
 #################################################
 # Setup hostname
 
-clear
+#clear
 
 echo "==============="
 echo "Server Hostname"
@@ -194,10 +194,14 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
 
-	read -p "Please enter the primary IP (currently: ${PRIMARY_IP}):" TEMP_PIP
-	read -p "Please enter the new full host name (currently: $HOSTNAME_FULL):" TEMP_HN_FULL
-	read -p "Please enter the new short host name (currently: $HOSTNAME_SHORT):" TEMP_HN_SHORT
+	read -p "Please enter the primary IP [${PRIMARY_IP}]:" TEMP_PIP
+	read -p "Please enter the new full host name [$HOSTNAME_FULL]:" TEMP_HN_FULL
+	read -p "Please enter the new short host name [$HOSTNAME_SHORT]:" TEMP_HN_SHORT
 	echo
+	TEMP_PIP=${TEMP_PIP:-${PRIMARY_IP}}
+	TEMP_HN_FULL=${TEMP_HN_FULL:-${HOSTNAME_FULL}}
+	TEMP_HN_SHORT=${TEMP_HN_SHORT:-${HOSTNAME_SHORT}}
+	
 	echo "The settings you entered were:"
 	echo "Primary IP: "$TEMP_PIP
 	echo "Full hostname: "$TEMP_HN_FULL
@@ -228,7 +232,7 @@ apply_template /etc/mailname mailname
 ############################################################################
 # Install software
 
-clear
+#clear
 echo "======================"
 echo "Instal Server Software"
 echo "======================"
@@ -245,16 +249,19 @@ echo
 apt install -y git exim4 nginx php-fpm mariadb-server fail2ban
 
 echo 
-echo "The script will now download and install the latest version of certbot-auto"
+if [ ! -f "/usr/local/sbin/certbot-auto" ]
+then
+	echo "The script will now download and install the latest version of certbot-auto"
 
-wget https://dl.eff.org/certbot-auto
-chmod a+x certbot-auto
-mv ./certbot-auto /usr/local/sbin/
+	wget https://dl.eff.org/certbot-auto
+	chmod a+x certbot-auto
+	mv ./certbot-auto /usr/local/sbin/
+fi
 
 ######################################################################################################
 # Configure software
 
-clear
+#clear
 echo "========================="
 echo "Configure Server Software"
 echo "========================="
@@ -266,7 +273,7 @@ echo "Done"
 echo
 echo
 echo "Setting up php:"
-apply_template /etc/php/7.*/fpm/conf.d/php.ini php.ini
+apply_template /etc/php/7.2/fpm/conf.d/php.ini php.ini
 service php7.2-fpm restart
 echo "Done"
 echo
@@ -280,9 +287,9 @@ mv /var/www/html/index* /var/www/html/index.html 2> /dev/null
 if [ -f "/etc/ssl/certs/dhparam.pem" ]
 then
 	echo "It seems you already have a dhparam.pem file (which strengthens SSL security)."
-        read -p "Would you like to generate a new one anyway (warning: it will take a long time!)? [y/N]" -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]
+	read -p "Would you like to generate a new one anyway (warning: it will take a long time!)? [y/N]" -n 1 -r
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]
         then
 		openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
 	fi
@@ -294,27 +301,120 @@ fi
 
 apply_template /etc/nginx/snippets/ssl-params.conf ssl-params.conf
 apply_template /etc/nginx/nginx.conf nginx.conf
-apply_template /etc/nginx/sites-available/default default
+
+if grep -q "#__SharedServerTools__" "/etc/nginx/sites-available/default"
+then
+	read -p "The nginx config file for the default domain already exists, do you want to overwrite it? [y/N]" -n 1 -r
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]
+	then
+		apply_template /etc/nginx/sites-available/default default
+	fi
+else
+    apply_template /etc/nginx/sites-available/default default
+fi
+
+
 service nginx restart
 echo "Done"
 echo
-echo
-echo "The script needs to install certbot and obtain an SSL cert to continue setup. Please follow the prompts that follow."
-echo
-read -n 1 -s -p "Press any key to continue"
+
 
 ########################################################################
 # SSL Certificate
 
-clear
-echo "=============="
-echo "SSL Certifcate"
-echo "=============="
-echo
-certbot-auto certonly --agree-tos --webroot --webroot-path /var/www/html -d ${HOSTNAME_FULL}
-echo
-echo "Installing certificate:"
-sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
-service nginx reload
-echo "Done"
+if [ -f "/etc/letsencrypt/live/${HOSTNAME_FULL}/fullchain.pem" ]
+then
+	read -p "Would you like to obtain a fresh SSL certificate?[y/N]" -n 1 -r
+	if [[ $REPLY =~ ^[Yy]$ ]] 
+	then
+		echo 
+	else
+		#If a valid cert exists, make sure it is being used
+		if [ -f "/etc/letsencrypt/live/${HOSTNAME_FULL}/fullchain.pem" ]
+		then		
+			sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
+		fi
+	fi
+fi
 
+if [ ! -f "/etc/letsencrypt/live/${HOSTNAME_FULL}/fullchain.pem" ] || [[ $REPLY =~ ^[Yy]$ ]]
+then
+	#clear
+	echo "=============="
+	echo "SSL Certifcate"
+	echo "=============="
+	echo
+	sed -i 's/#__COMMENT_LINE__/#__COMMENT__&/g' /etc/nginx/sites-available/default
+	service nginx reload	
+	echo
+	certbot-auto certonly --agree-tos --webroot --webroot-path /var/www/html -d ${HOSTNAME_FULL}
+	echo
+	echo "Installing certificate:"
+	sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
+	service nginx reload
+	echo "Done"
+fi
+
+
+
+########################################################################
+# Setup EXIM
+
+#clear
+echo "================"
+echo "EXIM Mail Server"
+echo "================"
+echo
+echo "Installing custom configuration:"
+apply_template /etc/exim4/update-exim4.conf.conf update-exim4.conf.conf
+apply_template /etc/exim4/conf.d/main/00_local_macros 00_local_macros
+mkdir /etc/exim4/dkim/ 2> /dev/null
+update-exim4.conf
+echo
+if [ -f "/etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public" ]
+then
+	echo "DKIM keys were previously generated for this domain."
+	echo
+	echo "If you expeirence issues sending mail, please ensure the following entires are in your DNS record for" ${HOSTNAME_FULL}
+else
+	echo "Generating a DKIM key for sending emails from the server's domain."
+	echo
+	mkdir /etc/exim4/dkim/${HOSTNAME_FULL}/
+	openssl genrsa -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private 2048 > /dev/null 2>&1
+	openssl rsa -in /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public -pubout -outform PEM
+	echo
+	echo "DKIM is a way of authenticating which servers who have permission to send email for a domain."
+	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
+	echo 
+	echo "Please add the following entires to your DNS record for" ${HOSTNAME_FULL}
+fi
+
+echo
+echo "Type:     TXT"
+echo "Name:     ${HOSTNAME_SHORT}._domainkey"
+echo "Value:    v=DKIM1; p="$(cat /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public | sed '1,1d' | sed '$d' | tr -d '\n')
+echo
+echo "Type:     TXT"
+echo "Name:     "${HOSTNAME_FULL}
+echo "Value:    v=spf1 a mx -all"
+echo
+
+
+echo
+echo "====================="
+echo "Installation complete"
+echo "====================="
+echo
+echo "The script has finished setting up your new server."
+echo
+echo "Next steps:"
+echo
+echo "Single-Site Server"
+echo "  If this server will host only one domain, you can store your files in /var/www/html"
+echo
+echo "Multi-Site Server"
+echo "  If you plan to host multiple websites, from multiple users, run the add-website.sh file for each domain."
+echo
+echo
+echo "You can re-run this setup file at any time to alter your configuration."

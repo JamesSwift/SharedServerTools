@@ -1,0 +1,15 @@
+MAIN_TLS_ENABLE = yes
+MAIN_TLS_CERTIFICATE = /etc/letsencrypt/live/__HOSTNAME_FULL__/fullchain.pem
+MAIN_TLS_PRIVATEKEY = /etc/letsencrypt/live/__HOSTNAME_FULL__/privkey.pem
+
+DKIM_CANON = relaxed
+
+DKIM_SELECTOR = __HOSTNAME_SHORT__
+
+DKIM_DOMAIN = ${sg{${lc:${domain:$h_from:}}}{^www\.}{}}
+
+# The file is based on the outgoing domain-name in the from-header.
+DKIM_FILE = /etc/exim4/dkim/{DKIM_DOMAIN}.private
+
+# If key exists then use it, if not don't.
+DKIM_PRIVATE_KEY = ${if exists{DKIM_FILE}{DKIM_FILE}{0}}

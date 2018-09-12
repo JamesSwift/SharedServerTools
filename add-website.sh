@@ -1,71 +1,151 @@
 #!/bin/bash
 
+#First, check we are root
+if [[ $EUID -ne 0 ]]; then
+  echo "This script must be run as root." 2>&1
+  exit 1
+fi
+
 #vars
 SCRIPT_PATH=`realpath $0`
 SCRIPT_DIR=`dirname $SCRIPT_PATH`
+PRIMARY_IP=`hostname -I`
+PRIMARY_IP="${PRIMARY_IP%% }"
 
-echo "Creating a new website."
-echo "Before starting, ensure that the domain you are about to setup points to the current server."
-read -rsp $"Press any key to continue..." -n 1 key
+echo "======================"
+echo "Creating A New Website"
+echo "======================"
+
 echo ""
-echo "Please enter the domain name for this new website:"
+echo "Please enter the (sub-)domain name of the new website (excluding www):"
 read domain
 
-echo "Please enter the a username to use for the new website:"
-read username
+domain=`echo "$domain" | tr '[:upper:]' '[:lower:]'`
 
-adduser ${username}
-mkdir /home/${username}/www
-cd /home/${username}/www
+DOMAIN_IP=`getent hosts $domain | awk '{ print $1 ; exit }'`
+DOMAIN_IP="${DOMAIN_IP%% }"
 
-echo ""
-
-echo "Adding www-data to group $username (to allow nginx to read the static files)"
-usermod -aG ${username} www-data
-
-echo "Setting up blank git repo in www directory:"
-git init
-git config --local receive.denyCurrentBranch ignore
-
-
-echo "Adding hook to auto checkout pushed commits:"
-cp ${SCRIPT_DIR}/templates/git-hook.template .git/hooks/post-receive
-sed -i "s/__USERNAME__/${username}/g" .git/hooks/post-receive
-chmod +x .git/hooks/post-receive
-chown -R ${username}.${username} ./
-
-echo "Creating nginx website config file in /etc/nginx/sites-available/${domain}"
-cp ${SCRIPT_DIR}/templates/nginx-website.template /etc/nginx/sites-available/${domain}
-sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
-sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
+if [ "$DOMAIN_IP" != "$PRIMARY_IP" ] && [ "$DOMAIN_IP" != "127.0.0.1" ]
+then 
+	echo
+	echo "WARNING! $domain ($DOMAIN_IP) doesn't point to this server's IP address ($PRIMARY_IP)."
+	echo "This server must be reachable at ${domain}:80 to be able to obtain an SSL certificate."
+	echo "If this server is behind a proxy and you are sure it is reachable then continue. Otherwise alter your DNS settings then try again."
+	echo 
+	read -p "Continue adding the website? [y/N]" -n 1 -r 
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]
+	then
+		#Never mind
+		echo 
+		echo "Continuing..."
+		echo
+	else
+		echo "Cancelled."
+		exit		
+	fi
+fi
 
 
-echo "Linking nginx website config to /etc/nginx/sites-enabled/${domain}"
-ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
+#Check if already added
+if [ -f "/etc/nginx/sites-available/${domain}" ]
+then
+	echo
+	username=`grep --only-matching --perl-regex "(?<=\#__OWNER__\=).*" /etc/nginx/sites-available/${domain}`
+	echo "$domain is already configured on this system. It belongs to: $username"
+	read -p "Do you wish to reset the nginx config for it? [N/y]" -n 1 -r 
+
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]
+	then
+		echo "Resetting config. By default SSL is DISABLED, you may wish to re-enable it."
+		echo
+		rm /etc/nginx/sites-available/${domain}
+		cp ${SCRIPT_DIR}/templates/nginx-website.template /etc/nginx/sites-available/${domain}
+		sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
+		sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
+		service php7.2-fpm reload
+	fi
+	echo
+else 
+
+	echo "Which user should own this new website (will be created if doesn't exist):"
+	read username
+
+	if [ ! $(getent passwd $username) ] ; then
+		echo
+		echo "Creating new user: $username"
+		adduser ${username}
+		echo
+	fi
+	
+	
+	mkdir /home/${username}/www 2> /dev/null
+	mkdir /home/${username}/www/$domain
+	cd /home/${username}/www/$domain
+	
+	echo 
+	echo "Adding www-data to group $username (to allow nginx to read the static files)"
+	usermod -aG ${username} www-data	
 
 
-echo "Creating php-fpm pool config file in /etc/php/7.*/pfm/pool.d/${username}.conf"
-cp ${SCRIPT_DIR}/templates/fpm-pool.template /etc/php/7.*/fpm/pool.d/${username}.conf
-sed -i "s/__USERNAME__/${username}/g" /etc/php/7.*/fpm/pool.d/${username}.conf
+	echo "Setting up blank git repo in www directory:"
+	git init
+	git config --local receive.denyCurrentBranch ignore
 
 
-echo "Reloading php-fpm configuration:"
-service php7.2-fpm reload
-echo "Reloading nginx configuration:"
-service nginx reload
+	echo "Adding hook to auto checkout pushed commits:"
+	cp ${SCRIPT_DIR}/templates/git-hook.template .git/hooks/post-receive
+	sed -i "s/__USERNAME__/${username}/g" .git/hooks/post-receive
+	chmod +x .git/hooks/post-receive
+	
+
+	echo "Creating nginx website config file in /etc/nginx/sites-available/${domain}"
+	cp ${SCRIPT_DIR}/templates/nginx-website.template /etc/nginx/sites-available/${domain}
+	sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
+	sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
+
+	chown -R ${username}.${username} /home/${username}/www
 
 
-echo "Obtaining ssl certificate:"
-#certbot-auto --nginx --no-redirect -d ${domain} -d www.${domain}
-certbot-auto certonly --webroot --webroot-path /home/${username}/www -d ${domain} -d www.${domain}
-
-echo "Installing certificate:"
-sed -i "s/__SSL_DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
-sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/${domain}
+	echo "Linking nginx website config to /etc/nginx/sites-enabled/${domain}"
+	ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
 
 
-echo "Reloading nginx:"
-service nginx reload
+	echo "Creating php-fpm pool config file in /etc/php/7.2/pfm/pool.d/${username}.conf"
+	cp ${SCRIPT_DIR}/templates/fpm-pool.template /etc/php/7.2/fpm/pool.d/${username}.conf
+	sed -i "s/__USERNAME__/${username}/g" /etc/php/7.2/fpm/pool.d/${username}.conf
 
 
-echo "New website has been added."
+	echo "Reloading php-fpm configuration:"
+	service php7.2-fpm reload
+	echo "Reloading nginx configuration:"
+	service nginx reload
+
+fi
+
+
+read -p "Do you wish to enable SSL for this domain? [Y/n]" -n 1 -r 
+echo
+if [[ $REPLY =~ ^[Nn]$ ]]
+then
+	echo "Turning off SSL:"
+	sed -i 's/#__COMMENT_LINE__/#__COMMENT__&/g' "/etc/nginx/sites-available/${domain}"
+	service nginx reload	
+else
+	echo "Turning off SSL while obtaining certificate:"
+	sed -i 's/#__COMMENT_LINE__/#__COMMENT__&/g' "/etc/nginx/sites-available/${domain}"
+	service nginx reload
+	
+	echo "Obtaining ssl certificate:"
+	certbot-auto certonly --webroot --webroot-path "/home/${username}/www/${domain}/" -d "${domain}" -d "www.${domain}"
+
+	echo "Installing certificate:"
+	sed -i "s/__SSL_DOMAIN__/${domain}/g" "/etc/nginx/sites-available/${domain}"
+	sed -i "s/#__COMMENT__//g" "/etc/nginx/sites-available/${domain}"
+
+	echo "Reloading nginx:"
+	service nginx reload
+fi
+
+echo "The website has been configured. You can run this command again to reconfigure it if you wish."
