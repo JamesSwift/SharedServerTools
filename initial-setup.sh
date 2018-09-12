@@ -376,7 +376,7 @@ if [ -f "/etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public" ]
 then
 	echo "DKIM keys were previously generated for this domain."
 	echo
-	echo "If you expeirence issues sending mail, please ensure the following entires are in your DNS record for" ${HOSTNAME_FULL}
+	echo "If you experience issues sending mail, please ensure the following entires are in your DNS record for" ${HOSTNAME_FULL}
 else
 	echo "Generating a DKIM key for sending emails from the server's domain."
 	echo
@@ -384,7 +384,7 @@ else
 	openssl genrsa -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private 2048 > /dev/null 2>&1
 	openssl rsa -in /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public -pubout -outform PEM
 	echo
-	echo "DKIM is a way of authenticating which servers who have permission to send email for a domain."
+	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
 	echo 
 	echo "Please add the following entires to your DNS record for" ${HOSTNAME_FULL}
