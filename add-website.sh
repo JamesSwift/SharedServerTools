@@ -41,7 +41,7 @@ then
 		echo "Continuing..."
 		echo
 	else
-		echo "Cancelled."
+		echo "Canceled."
 		exit		
 	fi
 fi
@@ -84,23 +84,23 @@ else
 	mkdir /home/${username}/www/$domain
 	cd /home/${username}/www/$domain
 	
-	echo 
-	echo "Adding www-data to group $username (to allow nginx to read the static files)"
+	#echo 
+	#echo "Adding www-data to group $username (to allow nginx to read the static files)"
 	usermod -aG ${username} www-data	
 
 
-	echo "Setting up blank git repo in www directory:"
+	#echo "Setting up blank git repo in www directory:"
 	git init
 	git config --local receive.denyCurrentBranch ignore
 
 
-	echo "Adding hook to auto checkout pushed commits:"
+	echo "Adding git hook to auto checkout pushed commits:"
 	cp ${SCRIPT_DIR}/templates/git-hook.template .git/hooks/post-receive
 	sed -i "s/__USERNAME__/${username}/g" .git/hooks/post-receive
 	chmod +x .git/hooks/post-receive
 	
 
-	echo "Creating nginx website config file in /etc/nginx/sites-available/${domain}"
+	#echo "Creating nginx website config file in /etc/nginx/sites-available/${domain}"
 	cp ${SCRIPT_DIR}/templates/nginx-website.template /etc/nginx/sites-available/${domain}
 	sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
 	sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
@@ -108,7 +108,7 @@ else
 	chown -R ${username}.${username} /home/${username}/www
 
 
-	echo "Linking nginx website config to /etc/nginx/sites-enabled/${domain}"
+	#echo "Linking nginx website config to /etc/nginx/sites-enabled/${domain}"
 	ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
 
 
@@ -148,4 +148,36 @@ else
 	service nginx reload
 fi
 
-echo "The website has been configured. You can run this command again to reconfigure it if you wish."
+echo
+if [ -f "/etc/exim4/dkim/${domain}/dkim.public" ]
+then
+	echo "DKIM keys were previously generated for this domain."
+	echo
+	echo "If you experience issues sending mail, please ensure the following entires are in your DNS record for" ${domain}
+else
+	echo "Generating a DKIM key for sending emails for this domain from this server."
+	echo
+	mkdir /etc/exim4/dkim/${domain}/
+	openssl genrsa -out /etc/exim4/dkim/${domain}/dkim.private 2048 > /dev/null 2>&1
+	openssl rsa -in /etc/exim4/dkim/${domain}/dkim.private -out /etc/exim4/dkim/${domain}/dkim.public -pubout -outform PEM
+	echo
+	echo "DKIM is a way of proving which servers have permission to send email for a domain."
+	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
+	echo 
+	echo "Please add the following entires to your DNS record for" ${domain}
+fi
+
+echo
+echo "Type:     TXT"
+echo "Name:     "$(hostname)"._domainkey"
+echo "Value:    v=DKIM1; p="$(cat /etc/exim4/dkim/${domain}/dkim.public | sed '1,1d' | sed '$d' | tr -d '\n')
+echo
+echo "Type:     TXT"
+echo "Name:     "${domain}
+echo "Value:    v=spf1 a mx -all"
+echo
+
+
+
+
+echo "The website has been configured. You can run this script again to reconfigure it or see these details again, if you wish."
