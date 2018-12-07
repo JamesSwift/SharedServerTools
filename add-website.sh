@@ -12,12 +12,12 @@ SCRIPT_DIR=`dirname $SCRIPT_PATH`
 PRIMARY_IP=`hostname -I`
 PRIMARY_IP="${PRIMARY_IP%% }"
 
-echo "======================"
-echo "Creating A New Website"
-echo "======================"
+echo "==========================="
+echo "Creating/Altering A Website"
+echo "==========================="
 
 echo ""
-echo "Please enter the (sub-)domain name of the new website (excluding www):"
+echo "Please enter the domain name of the website (excluding www):"
 read domain
 
 domain=`echo "$domain" | tr '[:upper:]' '[:lower:]'`
@@ -58,10 +58,21 @@ then
 	echo
 	if [[ $REPLY =~ ^[Yy]$ ]]
 	then
+
+		read -p "Do you want to use www.${domain} as the primary domain? [Y/n]" -n 1 -r 
+		echo
+		if [[ $REPLY =~ ^[Nn]$ ]]
+		then
+			template=${SCRIPT_DIR}/templates/nginx-website.template 
+		else
+			echo "Setting up redirect to www."
+			template=${SCRIPT_DIR}/templates/nginx-website-www.template 
+		fi
+
 		echo "Resetting config. By default SSL is DISABLED, you may wish to re-enable it."
 		echo
 		rm /etc/nginx/sites-available/${domain}
-		cp ${SCRIPT_DIR}/templates/nginx-website.template /etc/nginx/sites-available/${domain}
+		cp ${template} /etc/nginx/sites-available/${domain}
 		sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
 		sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
 		service php7.2-fpm reload
@@ -98,10 +109,19 @@ else
 	cp ${SCRIPT_DIR}/templates/git-hook.template .git/hooks/post-receive
 	sed -i "s/__USERNAME__/${username}/g" .git/hooks/post-receive
 	chmod +x .git/hooks/post-receive
-	
+
+	read -p "Do you want to use www.${domain} as the primary domain? [Y/n]" -n 1 -r 
+	echo
+	if [[ $REPLY =~ ^[Nn]$ ]]
+	then
+		template=${SCRIPT_DIR}/templates/nginx-website.template 
+	else
+		echo "Setting up redirect to www."
+		template=${SCRIPT_DIR}/templates/nginx-website-www.template 
+	fi
 
 	#echo "Creating nginx website config file in /etc/nginx/sites-available/${domain}"
-	cp ${SCRIPT_DIR}/templates/nginx-website.template /etc/nginx/sites-available/${domain}
+	cp ${template} /etc/nginx/sites-available/${domain}
 	sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
 	sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
 
@@ -138,7 +158,16 @@ else
 	service nginx reload
 	
 	echo "Obtaining ssl certificate:"
-	certbot-auto certonly --webroot --webroot-path "/home/${username}/www/${domain}/" -d "${domain}" -d "www.${domain}"
+	read -p "Do you want to obtain an ssl certificate for www.${domain} as well as ${domain}? [Y/n]" -n 1 -r 
+	echo
+	if [[ $REPLY =~ ^[Nn]$ ]]
+	then
+		certbot-auto certonly --webroot --webroot-path "/home/${username}/www/${domain}/" -d "${domain}"
+	else
+		echo "Aquiring cert for www subdomain."
+		certbot-auto certonly --webroot --webroot-path "/home/${username}/www/${domain}/" -d "${domain}" -d "www.${domain}"
+	fi
+
 
 	echo "Installing certificate:"
 	sed -i "s/__SSL_DOMAIN__/${domain}/g" "/etc/nginx/sites-available/${domain}"
