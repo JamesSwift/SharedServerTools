@@ -1,5 +1,6 @@
-#__SharedServerTools__ - Please do not remove or alter this or similar comments
+#__SharedServerTools__ - Please do not remove or alter these or similar comments
 #__OWNER__=__USERNAME__
+#__DIR_=__DOC_ROOT__
 
 server {
 	listen 80;
@@ -14,7 +15,7 @@ server {
 
 	include snippets/ssl-params.conf;
 
-	root /home/__USERNAME__/www/__DOMAIN__/;
+	root __DOC_ROOT__;
 
 	index index.html index.php;
 
@@ -26,16 +27,16 @@ server {
 
 	#######
 	# Rewrite URIs
-	
 
-	#######	
+
+	#######
 	# Deny locations
 
-		location ~ /.well-known { 
+		location ~ /.well-known {
 			allow all;
 		}
 
-        # deny access to dot files		
+        # deny access to dot files
         location ~ /\. {
                 deny all;
         }

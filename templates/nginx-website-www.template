@@ -1,5 +1,7 @@
-#__SharedServerTools__ - Please do not remove or alter this or similar comments
+#__SharedServerTools__ - Please do not remove or alter these or similar comments
 #__OWNER__=__USERNAME__
+#__DIR_=__DOC_ROOT__
+
 
 #Redirect non-www to www
 server {
@@ -13,8 +15,8 @@ server {
 
     include snippets/ssl-params.conf;
 
-	server_name          __DOMAIN__;
-	
+	server_name __DOMAIN__;
+
 	access_log /home/__USERNAME__/www/__DOMAIN__.access.log;
 	error_log /home/__USERNAME__/www/__DOMAIN__.error.log;
 
@@ -35,7 +37,7 @@ server {
 
 	include snippets/ssl-params.conf;
 
-	root /home/__USERNAME__/www/__DOMAIN__/;
+	root __DOC_ROOT__;
 
 	index index.html index.php;
 
@@ -47,16 +49,16 @@ server {
 
 	#######
 	# Rewrite URIs
-	
 
-	#######	
+
+	#######
 	# Deny locations
 
-		location ~ /.well-known { 
+		location ~ /.well-known {
 			allow all;
 		}
 
-        # deny access to dot files		
+        # deny access to dot files
         location ~ /\. {
                 deny all;
         }
