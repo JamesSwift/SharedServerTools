@@ -25,6 +25,8 @@ server {
 
 
 server {
+	set $php_socket unix:/run/php/__USERNAME__.sock;
+
 	listen 80;
 	listen [::]:80;
 
@@ -85,7 +87,7 @@ server {
 
         location ~ \.php$ {
                 include snippets/fastcgi-php.conf;
-                fastcgi_pass unix:/run/php/__USERNAME__.sock;
+                fastcgi_pass $php_socket;
         }
 
 }
