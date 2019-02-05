@@ -1,6 +1,6 @@
 #__SharedServerTools__ - Please do not remove or alter these or similar comments
 #__OWNER__=__USERNAME__
-#__DIR_=__DOC_ROOT__
+#__DIR__=__DOC_ROOT__
 
 
 #Redirect non-www to www

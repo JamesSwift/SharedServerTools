@@ -18,8 +18,9 @@ fi
 
 #Find the owner before deleting
 username=`grep --only-matching --perl-regex "(?<=\#__OWNER__\=).*" /etc/nginx/sites-available/${domain}`
+DOC_ROOT=`grep --only-matching --perl-regex "(?<=\#__DIR__\=).*" /etc/nginx/sites-available/${domain}`
 
-if [ ! $(getent passwd $username) ] || [ ! -d /home/$username ] || [ "$username" == "" ] ; then
+if [[ ! $(getent passwd $username) ]] || [ ! -d /home/$username ] || [ "$username" == "" ] ; then
 	echo "An error occured and the owner of the domain could not be found."
 	exit
 fi
@@ -29,18 +30,25 @@ rm /etc/nginx/sites-available/$domain
 rm -rf /etc/letsencrypt/live/$domain/
 rm -rf /etc/letsencrypt/renewal/${domain}.conf
 rm -rf /etc/letsencrypt/archive/${domain}.conf
-rm -rf /home/$username/www/${domain}/
-rm -f /home/$username/www/${domain}*
+rm -f /home/$username/www/${domain}.*
+
+read -p "Do you wish to delete the document root folder? (${DOC_ROOT}) [N/y]" -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]
+then
+	rm -rf ${DOC_ROOT}
+fi
+
 service nginx restart
 
 echo "Domain deleted."
 echo
 
 
-read -p "Do you wish to delete user '$username' who owns this domain? (WARNING: they may have other active domains!) [N/y]" -n 1 -r 
+read -p "Do you wish to delete user '$username' who owns this domain? (WARNING: they may have other active domains!) [N/y]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
-then 
+then
 
 
 	rm /etc/php/7.2/fpm/pool.d/${username}.conf
