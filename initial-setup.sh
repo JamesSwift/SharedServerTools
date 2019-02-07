@@ -40,7 +40,7 @@ replace_config_param(){
 apply_template(){
 	rm $1".backup" 2> /dev/null
 	cp ${SCRIPT_DIR}/config-templates/$2 $1"~"
-	
+
 	#Apply sed filters for all known variables
 	sed -i "s/__HOSTNAME_FULL__/${HOSTNAME_FULL}/g" $1"~"
 	sed -i "s/__HOSTNAME_SHORT__/${HOSTNAME_SHORT}/g" $1"~"
@@ -73,7 +73,7 @@ echo "================="
 echo
 echo "This script is designed to turn a clean ubuntu 18.04 installation into a working, secured shared web server."
 echo "Ideally this script should be run as the very first thing you do with your new VPS. It will alter config files with no regard for their current state."
-echo 
+echo
 echo "The process is quite simple, but you will need to answer some questions first:"
 echo
 echo
@@ -85,7 +85,7 @@ echo
 echo "================"
 echo "Security Updates"
 echo "================"
-echo 
+echo
 echo "Before we start, it is advisable to check for and install any pending updates."
 read -p "Would you like to do this now? [y/N]" -n 1 -r
 echo
@@ -118,7 +118,7 @@ fi
 echo "================"
 echo "Account Security"
 echo "================"
-echo 
+echo
 echo "If your installation of ubuntu came with a default root password, it should be changed."
 read -p "Would you like to do this now? [y/N]" -n 1 -r
 echo
@@ -186,7 +186,7 @@ echo
 echo "Current primary IP: "$PRIMARY_IP" (This should be a single ip address, if more listed please correct)"
 echo "Current full hostname: "$HOSTNAME_FULL
 echo "Current short hostname: "$HOSTNAME_SHORT
-echo 
+echo
 echo "This script needs to know the domain that points to this server so it can obtain SSL certificates."
 echo
 read -p "Would you like to change these settings now? [y/N]" -n 1 -r
@@ -201,7 +201,7 @@ then
 	TEMP_PIP=${TEMP_PIP:-${PRIMARY_IP}}
 	TEMP_HN_FULL=${TEMP_HN_FULL:-${HOSTNAME_FULL}}
 	TEMP_HN_SHORT=${TEMP_HN_SHORT:-${HOSTNAME_SHORT}}
-	
+
 	echo "The settings you entered were:"
 	echo "Primary IP: "$TEMP_PIP
 	echo "Full hostname: "$TEMP_HN_FULL
@@ -246,9 +246,9 @@ echo "- mariadb-server"
 echo "- fail2ban"
 echo
 
-apt install -y git exim4 nginx php-fpm mariadb-server fail2ban
+apt install -y git exim4 nginx php7.2-fpm php7.2-mysql mariadb-server fail2ban
 
-echo 
+echo
 if [ ! -f "/usr/local/sbin/certbot-auto" ]
 then
 	echo "The script will now download and install the latest version of certbot-auto"
@@ -293,7 +293,7 @@ then
         then
 		openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
 	fi
-else 
+else
 	#File not found, generate a new one
 	echo "You need to generate a strong DHE parameter to secure SSL requests."
 	openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
@@ -326,13 +326,13 @@ echo
 if [ -f "/etc/letsencrypt/live/${HOSTNAME_FULL}/fullchain.pem" ]
 then
 	read -p "Would you like to obtain a fresh SSL certificate?[y/N]" -n 1 -r
-	if [[ $REPLY =~ ^[Yy]$ ]] 
+	if [[ $REPLY =~ ^[Yy]$ ]]
 	then
-		echo 
+		echo
 	else
 		#If a valid cert exists, make sure it is being used
 		if [ -f "/etc/letsencrypt/live/${HOSTNAME_FULL}/fullchain.pem" ]
-		then		
+		then
 			sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
 		fi
 	fi
@@ -346,7 +346,7 @@ then
 	echo "=============="
 	echo
 	sed -i 's/#__COMMENT_LINE__/#__COMMENT__&/g' /etc/nginx/sites-available/default
-	service nginx reload	
+	service nginx reload
 	echo
 	certbot-auto certonly --agree-tos --webroot --webroot-path /var/www/html -d ${HOSTNAME_FULL}
 	echo
@@ -386,7 +386,7 @@ else
 	echo
 	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
-	echo 
+	echo
 	echo "Please add the following entires to your DNS record for" ${HOSTNAME_FULL}
 fi
 

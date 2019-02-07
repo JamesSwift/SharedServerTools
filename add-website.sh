@@ -81,7 +81,7 @@ then
 		cp ${template} /etc/nginx/sites-available/${domain}
 		sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
 		sed -i "s#__DOC_ROOT__#${DOC_ROOT}#g" /etc/nginx/sites-available/${domain}
-		sed -i "s/__DOMAIN__/'${domain}'/g" /etc/nginx/sites-available/${domain}
+		sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
 		service php7.2-fpm reload
 	fi
 	echo
@@ -99,7 +99,7 @@ else
 	DOC_ROOT="/home/${username}/www/${domain}/"
 
 
-	echo 
+	echo
 	read -p "Where should the document root be? (It will be created if it does not exist) [${DOC_ROOT}]:" TEMP_DOC_ROOT
 	DOC_ROOT=${TEMP_DOC_ROOT:-${DOC_ROOT}}
 
@@ -175,11 +175,11 @@ echo
 if [[ $REPLY =~ ^[Nn]$ ]]
 then
 	echo "Turning off SSL:"
-	sed -i 's/#__COMMENT_LINE__/#__COMMENT__&/g' "/etc/nginx/sites-available/${domain}"
+	sed -i '/#__COMMENT_LINE__/s/^/#__COMMENT__/g' "/etc/nginx/sites-available/${domain}"
 	service nginx reload
 else
 	echo "Turning off SSL while obtaining certificate:"
-	sed -i 's/#__COMMENT_LINE__/#__COMMENT__&/g' "/etc/nginx/sites-available/${domain}"
+	sed -i '/#__COMMENT_LINE__/s/^/#__COMMENT__/g' "/etc/nginx/sites-available/${domain}"
 	service nginx reload
 
 	echo "Obtaining ssl certificate:"
