@@ -9,7 +9,7 @@ DKIM_SELECTOR = __HOSTNAME_SHORT__
 DKIM_DOMAIN = ${sg{${lc:${domain:$h_from:}}}{^www\.}{}}
 
 # The file is based on the outgoing domain-name in the from-header.
-DKIM_FILE = /etc/exim4/dkim/{DKIM_DOMAIN}.private
+DKIM_FILE = /etc/exim4/dkim/${lc:${domain:$h_from:}}.private
 
 # If key exists then use it, if not don't.
 DKIM_PRIVATE_KEY = ${if exists{DKIM_FILE}{DKIM_FILE}{0}}
