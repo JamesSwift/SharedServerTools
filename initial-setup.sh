@@ -71,8 +71,8 @@ echo "================="
 echo "SharedServerTools"
 echo "================="
 echo
-echo "This script is designed to turn a clean ubuntu 18.04 installation into a working, secured shared web server."
-echo "Ideally this script should be run as the very first thing you do with your new VPS. It will alter config files with no regard for their current state."
+echo "This script is designed to turn a clean ubuntu 19.04 installation into a working, secured, web file & mail server."
+echo "Ideally this script should be run as the very first thing you do with your new install. It will alter config files with no regard for their current state."
 echo
 echo "The process is quite simple, but you will need to answer some questions first:"
 echo
@@ -234,19 +234,20 @@ apply_template /etc/mailname mailname
 
 #clear
 echo "======================"
-echo "Instal Server Software"
+echo "Install Server Software"
 echo "======================"
 echo
 echo "The script will now install the software needed for the web server's operation from apt. Namely:"
 echo "- git"
 echo "- exim4"
+echo "- dovecot"
 echo "- nginx"
 echo "- php-fpm"
 echo "- mariadb-server"
 echo "- fail2ban"
 echo
 
-apt install -y git exim4 nginx php7.2-fpm php7.2-mysql mariadb-server fail2ban
+apt install -y git exim4 dovecot nginx php7.3-fpm php7.3-mysql mariadb-server fail2ban
 
 echo
 if [ ! -f "/usr/local/sbin/certbot-auto" ]
