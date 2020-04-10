@@ -108,7 +108,7 @@ else
 	fi
 	echo Document root will be: $DOC_ROOT
 	echo
-	cd $DOC_ROOT
+	cd "$DOC_ROOT"
 
 	#echo
 	#echo "Adding www-data to group $username (to allow nginx to read the static files)"

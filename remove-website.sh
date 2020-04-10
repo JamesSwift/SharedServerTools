@@ -36,7 +36,7 @@ read -p "Do you wish to delete the document root folder? (${DOC_ROOT}) [N/y]" -n
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
-	rm -rf ${DOC_ROOT}
+	rm -rf "${DOC_ROOT}"
 fi
 
 service nginx restart
