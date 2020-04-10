@@ -104,7 +104,7 @@ else
 	DOC_ROOT=${TEMP_DOC_ROOT:-${DOC_ROOT}}
 
 	if [ ! -d "$DOC_ROOT" ]; then
-		mkdir -p $DOC_ROOT
+		mkdir -p "$DOC_ROOT"
 	fi
 	echo Document root will be: $DOC_ROOT
 	echo
