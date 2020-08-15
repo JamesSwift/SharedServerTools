@@ -82,7 +82,7 @@ then
 		sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
 		sed -i "s#__DOC_ROOT__#${DOC_ROOT}#g" /etc/nginx/sites-available/${domain}
 		sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
-		service php7.2-fpm reload
+		service php7.4-fpm reload
 	fi
 	echo
 else
@@ -157,13 +157,13 @@ else
 	ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
 
 
-	echo "Creating php-fpm pool config file in /etc/php/7.2/pfm/pool.d/${username}.conf"
-	cp ${SCRIPT_DIR}/templates/fpm-pool.template /etc/php/7.2/fpm/pool.d/${username}.conf
-	sed -i "s/__USERNAME__/${username}/g" /etc/php/7.2/fpm/pool.d/${username}.conf
+	echo "Creating php-fpm pool config file in /etc/php/7.4/pfm/pool.d/${username}.conf"
+	cp ${SCRIPT_DIR}/templates/fpm-pool.template /etc/php/7.4/fpm/pool.d/${username}.conf
+	sed -i "s/__USERNAME__/${username}/g" /etc/php/7.4/fpm/pool.d/${username}.conf
 
 
 	echo "Reloading php-fpm configuration:"
-	service php7.2-fpm reload
+	service php7.4-fpm reload
 	echo "Reloading nginx configuration:"
 	service nginx reload
 
@@ -187,10 +187,10 @@ else
 	echo
 	if [[ $REPLY =~ ^[Nn]$ ]]
 	then
-		certbot-auto certonly --webroot --webroot-path "${DOC_ROOT}" -d "${domain}"
+		certbot certonly --webroot --webroot-path "${DOC_ROOT}" -d "${domain}"
 	else
 		echo "Aquiring cert for www subdomain."
-		certbot-auto certonly --webroot --webroot-path "${DOC_ROOT}" -d "${domain}" -d "www.${domain}"
+		certbot certonly --webroot --webroot-path "${DOC_ROOT}" -d "${domain}" -d "www.${domain}"
 	fi
 
 

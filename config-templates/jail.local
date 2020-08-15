@@ -1,2 +1,10 @@
 [sshd]
 enabled = true
+bantime  = 1h
+findtime  = 1h
+
+[exim]
+enabled = true
+
+[dovecot]
+enabled = true

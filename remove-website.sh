@@ -51,8 +51,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]
 then
 
 
-	rm /etc/php/7.2/fpm/pool.d/${username}.conf
-	service php7.2-fpm restart
+	rm /etc/php/7.4/fpm/pool.d/${username}.conf
+	service php7.4-fpm restart
 	deluser www-data $username
 	deluser $username
 	rm -rf /home/$username

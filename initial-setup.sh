@@ -17,13 +17,13 @@ replace_config_param(){
 		echo "-Parameter #1 is zero length.-"
 		return 1
 	fi
-        if [ -z "$2" ]
+		if [ -z "$2" ]
 	then
-                echo "-Parameter #2 is zero length.-"
-                return 1
-        fi
+				echo "-Parameter #2 is zero length.-"
+				return 1
+		fi
 
-        CONFIG_FILE=$1
+	CONFIG_FILE=$1
 	TARGET_KEY=$2
 	REPLACEMENT_VALUE=$3
 	SEARCH_KEY=${4:-".*"}
@@ -71,7 +71,7 @@ echo "================="
 echo "SharedServerTools"
 echo "================="
 echo
-echo "This script is designed to turn a clean ubuntu 19.04 installation into a working, secured, web file & mail server."
+echo "This script is designed to turn a clean ubuntu 20.04 installation into a working, secured, web, file, & mail server."
 echo "Ideally this script should be run as the very first thing you do with your new install. It will alter config files with no regard for their current state."
 echo
 echo "The process is quite simple, but you will need to answer some questions first:"
@@ -124,8 +124,8 @@ read -p "Would you like to do this now? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
-        echo
-        echo
+	echo
+	echo
 	passwd root
 	echo
 	echo
@@ -136,14 +136,14 @@ read -p "Would you like to do this now? [y/N]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
-        echo
-        echo
-        read -p "Desired username:" new_username
+	echo
+	echo
+	read -p "Desired username:" new_username
 	adduser $new_username
 	echo
 	usermod -aG sudo $new_username
-        echo
-        echo
+		echo
+		echo
 fi
 
 
@@ -153,7 +153,7 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]
 then
 	replace_config_param /etc/ssh/sshd_config PermitRootLogin no
-	#Leave sshd restart untill next reboot
+	#Leave sshd restart until next reboot
 fi
 
 
@@ -198,6 +198,7 @@ then
 	read -p "Please enter the new full host name [$HOSTNAME_FULL]:" TEMP_HN_FULL
 	read -p "Please enter the new short host name [$HOSTNAME_SHORT]:" TEMP_HN_SHORT
 	echo
+
 	TEMP_PIP=${TEMP_PIP:-${PRIMARY_IP}}
 	TEMP_HN_FULL=${TEMP_HN_FULL:-${HOSTNAME_FULL}}
 	TEMP_HN_SHORT=${TEMP_HN_SHORT:-${HOSTNAME_SHORT}}
@@ -245,19 +246,10 @@ echo "- nginx"
 echo "- php-fpm"
 echo "- mariadb-server"
 echo "- fail2ban"
+echo "- certbot"
 echo
 
-apt install -y git exim4 dovecot nginx php7.3-fpm php7.3-mysql mariadb-server fail2ban
-
-echo
-if [ ! -f "/usr/local/sbin/certbot-auto" ]
-then
-	echo "The script will now download and install the latest version of certbot-auto"
-
-	wget https://dl.eff.org/certbot-auto
-	chmod a+x certbot-auto
-	mv ./certbot-auto /usr/local/sbin/
-fi
+apt install -y git exim4 dovecot nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
 
 ######################################################################################################
 # Configure software
@@ -267,22 +259,21 @@ echo "========================="
 echo "Configure Server Software"
 echo "========================="
 echo
-echo "Enabling sshd jail in fail2ban:"
+echo "Enabling relevant jails in fail2ban:"
 apply_template /etc/fail2ban/jail.local jail.local
 service fail2ban restart
 echo "Done"
 echo
 echo
 echo "Setting up php:"
-apply_template /etc/php/7.2/fpm/conf.d/php.ini php.ini
-service php7.2-fpm restart
+apply_template /etc/php/7.4/fpm/conf.d/php.ini php.ini
+service php7.4-fpm restart
 echo "Done"
 echo
 echo
 echo "Setting up nginx:"
 chmod 770 -R /var/www
 chown -R root.www-data /var/www
-mv /var/www/html/index* /var/www/html/index.html 2> /dev/null
 
 #Generate new dhparam
 if [ -f "/etc/ssl/certs/dhparam.pem" ]
@@ -291,7 +282,7 @@ then
 	read -p "Would you like to generate a new one anyway (warning: it will take a long time!)? [y/N]" -n 1 -r
 	echo
 	if [[ $REPLY =~ ^[Yy]$ ]]
-        then
+		then
 		openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
 	fi
 else
@@ -312,7 +303,7 @@ then
 		apply_template /etc/nginx/sites-available/default default
 	fi
 else
-    apply_template /etc/nginx/sites-available/default default
+	apply_template /etc/nginx/sites-available/default default
 fi
 
 
@@ -330,6 +321,7 @@ then
 	if [[ $REPLY =~ ^[Yy]$ ]]
 	then
 		echo
+		#Do this in the next block below
 	else
 		#If a valid cert exists, make sure it is being used
 		if [ -f "/etc/letsencrypt/live/${HOSTNAME_FULL}/fullchain.pem" ]
@@ -349,7 +341,7 @@ then
 	sed -i 's/#__COMMENT_LINE__/#__COMMENT__&/g' /etc/nginx/sites-available/default
 	service nginx reload
 	echo
-	certbot-auto certonly --agree-tos --webroot --webroot-path /var/www/html -d ${HOSTNAME_FULL}
+	certbot certonly --agree-tos --webroot --webroot-path /var/www/html -d ${HOSTNAME_FULL}
 	echo
 	echo "Installing certificate:"
 	sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
@@ -388,7 +380,7 @@ else
 	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
 	echo
-	echo "Please add the following entires to your DNS record for" ${HOSTNAME_FULL}
+	echo "To enable it, please add the following entires to your DNS record for" ${HOSTNAME_FULL}
 fi
 
 echo

@@ -1,5 +1,5 @@
 # SharedServerTools
-Interactive scripts to turn a fresh ubuntu 18.04 install into a manageable, secured, multi-domain web server.
+Interactive scripts to turn a fresh ubuntu 20.04 install into a manageable, secured, multi-domain web server.
 
 These scripts perform the most common setup steps, including:
 - setting up hostname and ip addresses
