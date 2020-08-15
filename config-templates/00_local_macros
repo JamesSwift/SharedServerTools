@@ -9,7 +9,22 @@ DKIM_SELECTOR = __HOSTNAME_SHORT__
 DKIM_DOMAIN = ${sg{${lc:${domain:$h_from:}}}{^www\.}{}}
 
 # The file is based on the outgoing domain-name in the from-header.
-DKIM_FILE = /etc/exim4/dkim/${lc:${domain:$h_from:}}.private
+DKIM_FILE = /etc/exim4/dkim/${lc:${domain:$h_from:}}/dkim.private
 
 # If key exists then use it, if not don't.
 DKIM_PRIVATE_KEY = ${if exists{DKIM_FILE}{DKIM_FILE}{0}}
+
+daemon_smtp_ports = 25 : 465 : 587
+tls_on_connect_ports = 465 : 587
+
+spamd_address = 127.0.0.1 783
+
+CHECK_DATA_LOCAL_ACL_FILE = /etc/exim4/check_data_acl
+
+MESSAGE_SIZE_LIMIT = 100M
+IGNORE_SMTP_LINE_LENGTH_LIMIT=1
+
+MAIN_TRUSTED_GROUPS = sudo
+MAIN_FORCE_SENDER = yes
+
+MAIN_LOCAL_DOMAINS = @:localhost:dsearch;/etc/exim4/virtual

@@ -23,7 +23,6 @@ read domain
 
 domain=`echo "$domain" | tr '[:upper:]' '[:lower:]'`
 
-
 echo
 if [ -f "/etc/exim4/dkim/${domain}/dkim.public" ]
 then
@@ -44,7 +43,7 @@ else
 	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
 	echo
-	echo "Please add the following entires to your DNS record for" ${domain}
+	echo "Please consider adding the following entires to your DNS record for" ${domain}
 fi
 
 echo
@@ -56,4 +55,23 @@ echo "Type:     TXT"
 echo "Name:     "${domain}
 echo "Value:    v=spf1 a mx -all"
 echo
+echo "Type:     TXT"
+echo "Name:     "${domain}
+echo "Value:    v=DMARC1; p=reject; ruf=mailto:postmaster@${domain}; adkim=s; aspf=s"
+echo
 
+
+//Create the virtual domain file
+if [ ! -f "/etc/exim4/dkim/${domain}/dkim.public" ]
+then
+	touch "/etc/exim4/virtual/${domain}"
+	chown root:Debian-exim /etc/exim4/virtual/${domain}
+	chmod 660 /etc/exim4/virtual/${domain}
+fi
+
+echo
+echo "To setup routing from this domain to local users edit the file: /etc/exim4/virtual/${domain}"
+echo
+echo "For example to send info@${domain} to local user james add the following:"
+echo
+echo "info : james@localhost"

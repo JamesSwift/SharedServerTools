@@ -1,42 +1,42 @@
 #__SharedServerTools__ - Please do not remove or alter this or similar comments
 server {
-        listen 80 default_server;
-        listen [::]:80 default_server;
+	listen 80 default_server;
+	listen [::]:80 default_server;
 
-        # SSL configuration
+	# SSL configuration
 #__COMMENT__ 		listen 443 ssl default_server;#__COMMENT_LINE__
-#__COMMENT__ 		listen [::]:443 ssl default_server;#__COMMENT_LINE__
-#__COMMENT__ 		include snippets/ssl-params.conf;#__COMMENT_LINE__
+#__COMMENT__		listen [::]:443 ssl default_server;#__COMMENT_LINE__
+#__COMMENT__		include snippets/ssl-params.conf;#__COMMENT_LINE__
 
-#__COMMENT__ 		ssl_certificate /etc/letsencrypt/live/__HOSTNAME_FULL__/fullchain.pem;#__COMMENT_LINE__
-#__COMMENT__ 		ssl_certificate_key /etc/letsencrypt/live/__HOSTNAME_FULL__/privkey.pem;#__COMMENT_LINE__
-
-
-        root /var/www/html;
-
-        index index.html index.htm index.php;
-
-        server_name __HOSTNAME_FULL__;
-
-        location / {
-                # First attempt to serve request as file, then
-                # as directory, then fall back to displaying a 404.
-                try_files $uri $uri/ =404;
-        }
+#__COMMENT__		ssl_certificate /etc/letsencrypt/live/__HOSTNAME_FULL__/fullchain.pem;#__COMMENT_LINE__
+#__COMMENT__		ssl_certificate_key /etc/letsencrypt/live/__HOSTNAME_FULL__/privkey.pem;#__COMMENT_LINE__
 
 
-        location ~ \.php$ {
-                include snippets/fastcgi-php.conf;
-                fastcgi_pass unix:/run/php/php7.4-fpm.sock;
-        }
+	root /var/www/html;
+
+	index index.html index.htm index.php;
+
+	server_name __HOSTNAME_FULL__;
+
+	location / {
+		# First attempt to serve request as file, then
+		# as directory, then fall back to displaying a 404.
+		try_files $uri $uri/ =404;
+	}
+
+
+	location ~ \.php$ {
+		include snippets/fastcgi-php.conf;
+		fastcgi_pass unix:/run/php/php7.4-fpm.sock;
+	}
 
 		location ~ /.well-known { 
 			allow all;
 		}
 		
-        #Deny access to dot files
-        location ~ /\. {
-                deny all;
-        }
+	#Deny access to dot files
+	location ~ /\. {
+		deny all;
+	}
 }
 

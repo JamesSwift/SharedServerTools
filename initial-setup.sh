@@ -71,7 +71,7 @@ echo "================="
 echo "SharedServerTools"
 echo "================="
 echo
-echo "This script is designed to turn a clean ubuntu 20.04 installation into a working, secured, web, file, & mail server."
+echo "This script is designed to turn a clean ubuntu 20.04 installation into a working, secured, web, file, & mail server (with spam checking)."
 echo "Ideally this script should be run as the very first thing you do with your new install. It will alter config files with no regard for their current state."
 echo
 echo "The process is quite simple, but you will need to answer some questions first:"
@@ -238,9 +238,10 @@ echo "======================"
 echo "Install Server Software"
 echo "======================"
 echo
-echo "The script will now install the software needed for the web server's operation from apt. Namely:"
+echo "The script will now install the software needed for the server's operation from apt. Namely:"
 echo "- git"
-echo "- exim4"
+echo "- exim4 heavy"
+echo "- spamassassin"
 echo "- dovecot"
 echo "- nginx"
 echo "- php-fpm"
@@ -249,7 +250,7 @@ echo "- fail2ban"
 echo "- certbot"
 echo
 
-apt install -y git exim4 dovecot nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
+apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
 
 ######################################################################################################
 # Configure software
@@ -288,8 +289,7 @@ then
 else
 	#File not found, generate a new one
 	echo "You need to generate a strong DHE parameter to secure SSL requests."
-	openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
-fi
+	openssl dhparam -out /20.04 
 
 apply_template /etc/nginx/snippets/ssl-params.conf ssl-params.conf
 apply_template /etc/nginx/nginx.conf nginx.conf
@@ -352,7 +352,25 @@ fi
 
 
 ########################################################################
-# Setup EXIM
+# Setup EXIM & spamassassin
+
+echo "================"
+echo "Spam Assasin"
+echo "================"
+echo
+echo "Installing custom configuration:"
+apply_template /etc/default/spamassassin spamassassin
+echo
+echo "Creating spamd user"
+adduser --disabled-password --gecos "" spamd
+
+echo
+echo "Enabling the service and starting it:"
+systemctl enable spamassassin.service 
+systemctl restart spamassassin.service 
+echo
+echo
+
 
 #clear
 echo "================"
@@ -360,10 +378,20 @@ echo "EXIM Mail Server"
 echo "================"
 echo
 echo "Installing custom configuration:"
+
+mkdir -p /etc/exim4/virtual/ 2> /dev/null
+mkdir -p /etc/exim4/dkim/ 2> /dev/null
+
+apply_template /etc/exim4/check_data_acl check_data_acl
+apply_template /etc/exim4/conf.d/acl/01_acl_check_sender 01_acl_check_sender
+apply_template /etc/exim4/conf.d/aclrouter/350_exim4-config_vdom_aliases 350_exim4-config_vdom_aliases
 apply_template /etc/exim4/update-exim4.conf.conf update-exim4.conf.conf
 apply_template /etc/exim4/conf.d/main/00_local_macros 00_local_macros
-mkdir /etc/exim4/dkim/ 2> /dev/null
+
 update-exim4.conf
+service exim4 restart
+
+
 echo
 if [ -f "/etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public" ]
 then
@@ -380,7 +408,7 @@ else
 	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
 	echo
-	echo "To enable it, please add the following entires to your DNS record for" ${HOSTNAME_FULL}
+	echo "To enable it, add the following entires to your DNS record for" ${HOSTNAME_FULL}
 fi
 
 echo

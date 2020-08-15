@@ -234,6 +234,20 @@ echo "Value:    v=spf1 a mx -all"
 echo
 
 
+//Create the virtual domain file
+if [ ! -f "/etc/exim4/dkim/${domain}/dkim.public" ]
+then
+	echo "postmaster : ${username}@localhost" > "/etc/exim4/virtual/${domain}"
+	chown root:Debian-exim /etc/exim4/virtual/${domain}
+	chmod 660 /etc/exim4/virtual/${domain}
+fi
+
+echo
+echo "To setup routing from addresses at this domain to local users edit the file: /etc/exim4/virtual/${domain}"
+echo
+echo "For example to send info@${domain} to local user ${username} add the following:"
+echo
+echo "info : ${username}@localhost"
 
 
 echo "The website has been configured. You can run this script again to reconfigure it or see these details again, if you wish."

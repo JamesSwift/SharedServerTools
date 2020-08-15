@@ -1,0 +1,10 @@
+vdom_aliases:
+      driver = redirect
+      allow_defer
+      allow_fail
+      domains = dsearch;/etc/exim4/virtual
+      data = ${expand:${lookup{$local_part}lsearch*@{/etc/exim4/virtual/$domain}}}
+      retry_use_local_part
+      pipe_transport   = address_pipe
+      file_transport   = address_file
+      no_more
