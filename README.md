@@ -41,9 +41,11 @@ This tool has made this possible by editing the files found in `/etc/exim4/virtu
 For example, for the above to work, you would edit the following files:
 
 `/etc/exim4/virtual/myothersite.com`
+
     me : james@localhost
 
 `/etc/exim4/virtual/mysite.com`
+
     info : james@localhost
 
 If the file doesn't exist already, run `add-email-domain.sh` which will create it and 
