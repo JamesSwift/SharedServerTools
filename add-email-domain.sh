@@ -70,7 +70,7 @@ then
 fi
 
 echo
-echo "To setup routing from this domain to local users edit the file: /etc/exim4/virtual/${domain}"
+echo "To setup routing from addresses at this domain to local users edit the file: /etc/exim4/virtual/${domain}"
 echo
 echo "For example to send info@${domain} to local user james add the following:"
 echo
