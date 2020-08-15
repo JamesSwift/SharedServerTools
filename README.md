@@ -72,8 +72,8 @@ at a later point, simply run `add-email-domain.sh` again and it will output the 
 DNS entries again for you.
 
 
-# Default "From: " header
-If you send email from scripts with sendmail, you may wish them to come from an email address 
+# Default "From: " Header
+If you send email via the server, you may wish the messages to come from an email address 
 other than `user@server.mydomain.com`. You can of course set this manually each time, but to 
 change the default address for a user, edit the `/etc/email-addresses` file. For example:
 

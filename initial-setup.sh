@@ -242,7 +242,7 @@ echo "The script will now install the software needed for the server's operation
 echo "- git"
 echo "- exim4 heavy"
 echo "- spamassassin"
-echo "- dovecot"
+echo "- dovecot-imapd"
 echo "- nginx"
 echo "- php-fpm"
 echo "- mariadb-server"
@@ -250,7 +250,7 @@ echo "- fail2ban"
 echo "- certbot"
 echo
 
-apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
+apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot-imapd dovecot-sieve dovecot-antispam nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
 
 ######################################################################################################
 # Configure software
@@ -270,6 +270,11 @@ echo "Setting up php:"
 apply_template /etc/php/7.4/fpm/conf.d/php.ini php.ini
 service php7.4-fpm restart
 echo "Done"
+echo
+echo
+echo "Setting up dovecot:"
+apply_template /etc/fail2ban/10-ssl.conf 10-ssl.conf
+chmod 644 /var/www
 echo
 echo
 echo "Setting up nginx:"
