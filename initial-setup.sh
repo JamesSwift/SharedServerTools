@@ -439,6 +439,10 @@ echo "Type:     TXT"
 echo "Name:     "${HOSTNAME_FULL}
 echo "Value:    v=spf1 a mx -all"
 echo
+echo "Type:     TXT"
+echo "Name:     "${HOSTNAME_FULL}
+echo "Value:    v=DMARC1; p=reject; ruf=mailto:postmaster@${HOSTNAME_FULL}; adkim=s; aspf=s"
+echo
 
 
 echo
