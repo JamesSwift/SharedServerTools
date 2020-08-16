@@ -413,9 +413,9 @@ mkdir -p /etc/exim4/virtual/ 2> /dev/null
 mkdir -p /etc/exim4/dkim/ 2> /dev/null
 
 chown -R root:Debian-exim /etc/exim4/dkim/
-chmod -R 660 /etc/exim4/dkim/
+chmod -R 770 /etc/exim4/dkim/
 chown -R root:Debian-exim /etc/exim4/virtual/
-chmod -R 660 /etc/exim4/dkim/
+chmod -R 770 /etc/exim4/dkim/
 
 
 apply_template /etc/exim4/check_data_acl check_data_acl

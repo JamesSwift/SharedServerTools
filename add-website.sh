@@ -215,7 +215,7 @@ else
 	openssl genrsa -out /etc/exim4/dkim/${domain}/dkim.private 2048 > /dev/null 2>&1
 	openssl rsa -in /etc/exim4/dkim/${domain}/dkim.private -out /etc/exim4/dkim/${domain}/dkim.public -pubout -outform PEM
 	chown -R root:Debian-exim /etc/exim4/dkim/${domain}/
-	chmod -R 660 /etc/exim4/dkim/${domain}/
+	chmod -R 770 /etc/exim4/dkim/${domain}/
 	echo
 	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
@@ -244,7 +244,7 @@ if [ ! -f "/etc/exim4/dkim/${domain}/dkim.public" ]
 then
 	echo "postmaster : ${username}@localhost" > "/etc/exim4/virtual/${domain}"
 	chown root:Debian-exim /etc/exim4/virtual/${domain}
-	chmod 660 /etc/exim4/virtual/${domain}
+	chmod 770 /etc/exim4/virtual/${domain}
 	service exim4 reload
 fi
 
