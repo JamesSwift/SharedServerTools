@@ -58,7 +58,7 @@ echo "Name:     "${domain}
 echo "Value:    v=spf1 a mx -all"
 echo
 echo "Type:     TXT"
-echo "Name:     "${domain}
+echo "Name:     _dmarc."${domain}
 echo "Value:    v=DMARC1; p=reject; ruf=mailto:postmaster@${domain}; adkim=s; aspf=s"
 echo
 
