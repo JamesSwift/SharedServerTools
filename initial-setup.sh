@@ -275,6 +275,7 @@ echo
 echo "Setting up dovecot:"
 apply_template /etc/fail2ban/10-ssl.conf 10-ssl.conf
 chmod 644 /var/www
+echo "Done"
 echo
 echo
 echo "Setting up nginx:"
@@ -293,8 +294,9 @@ then
 	fi
 else
 	#File not found, generate a new one
-	echo "You need to generate a strong DHE parameter to secure SSL requests."
-	openssl dhparam -out /20.04 
+	echo "You need to generate a strong DHE parameter to secure SSL requests. This will take quite a while."
+	openssl dhparam -out /etc/ssl/certs/dhparam.pem 4096
+fi
 
 apply_template /etc/nginx/snippets/ssl-params.conf ssl-params.conf
 apply_template /etc/nginx/nginx.conf nginx.conf
