@@ -451,7 +451,7 @@ fi
 
 echo
 echo "Type:     TXT"
-echo "Name:     ${HOSTNAME_SHORT}._domainkey."${domain}
+echo "Name:     ${HOSTNAME_SHORT}._domainkey."${HOSTNAME_FULL}
 echo "Value:    v=DKIM1; p="$(cat /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public | sed '1,1d' | sed '$d' | tr -d '\n')
 echo
 echo "Type:     TXT"
