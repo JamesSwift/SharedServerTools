@@ -14,10 +14,12 @@ PRIMARY_IP="${PRIMARY_IP%% }"
 
 
 echo "============================="
-echo "ADD/VIEW DOMAIN DKIM SETTINGS"
+echo "ADD AN EMAIL DOMAIN TO EXIM"
 echo "============================="
+echo
 
-echo ""
+echo "This script let's you easily add a new domain to exim. If you have already added a domain, you can see the DKIM settings for it by running this script again."
+echo 
 echo "Please enter the domain name (excluding www):"
 read domain
 
