@@ -1,4 +1,4 @@
-# SharedServerTools v0.1.0
+# SharedServerTools v0.1.1
 Interactive scripts to turn a fresh ubuntu 20.04 install into a manageable, secured, multi-domain web and email server.
 
 These scripts perform common setup steps, including:
@@ -25,7 +25,7 @@ anything. They are not meant to be exposed to end-users, and are not hardened fo
 
 
 # Upgrading
-Sadly there is no safe upgrade path from older versions to this one. I wrote this project 
+Sadly there is no safe upgrade path from pre v0.1.0 versions to this one. I wrote this project 
 for myself, and as my needs 
 have changed I have changed the scripts without regard for other setups. If you pull 
 the latest git master it will likely result in problems when you try to modify existing 
