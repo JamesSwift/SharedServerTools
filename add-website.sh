@@ -245,6 +245,7 @@ then
 	echo "postmaster : ${username}@localhost" > "/etc/exim4/virtual/${domain}"
 	chown root:Debian-exim /etc/exim4/virtual/${domain}
 	chmod 660 /etc/exim4/virtual/${domain}
+	service exim4 reload
 fi
 
 echo
