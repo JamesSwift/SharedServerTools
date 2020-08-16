@@ -482,4 +482,4 @@ echo
 echo
 echo "You can re-run this setup file at any time to alter your configuration."
 echo
-echo "If your server came with the default 'ubuntu' user, don't forget to remove it or change it's password.
+echo "If your server came with the default 'ubuntu' user, don't forget to remove it or change it's password."
