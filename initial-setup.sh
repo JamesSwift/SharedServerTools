@@ -360,12 +360,23 @@ fi
 
 #Change permissions to allow exim and dovecot to use the ssl cert
 usermod -aG Debian-exim dovecot
+
 chown root:Debian-exim /etc/letsencrypt/live
 chmod 770 /etc/letsencrypt/live
-chown -R root:Debian-exim /etc/letsencrypt/live/${HOSTNAME_FULL}
+chmod g+s /etc/letsencrypt/live
+
 chown root:Debian-exim /etc/letsencrypt/archive
 chmod 770 /etc/letsencrypt/archive
+chmod g+s /etc/letsencrypt/archive
+
 chown -R root:Debian-exim /etc/letsencrypt/archive/${HOSTNAME_FULL}
+chmod g+s /etc/letsencrypt/archive/${HOSTNAME_FULL}
+
+chown -R root:Debian-exim /etc/letsencrypt/live/${HOSTNAME_FULL}
+chmod g+s /etc/letsencrypt/live/${HOSTNAME_FULL}
+
+#Change mode of privkey to allow group read (will be preserved across new keys by certbot)
+chmod 640 /etc/letsencrypt/archive/${HOSTNAME_FULL}/privkey*.pem
 
 #Reload dovecot to take advantage of the new ssl cert
 service dovecot restart
