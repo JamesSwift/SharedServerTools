@@ -275,7 +275,7 @@ echo "Done"
 echo
 echo
 echo "Setting up dovecot:"
-apply_template /etc/fail2ban/10-ssl.conf 10-ssl.conf
+apply_template /etc/dovecot/conf.d/10-ssl.conf 10-ssl.conf
 chmod 644 /var/www
 echo "Done"
 echo
