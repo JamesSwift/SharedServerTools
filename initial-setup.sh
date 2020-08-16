@@ -368,7 +368,7 @@ chmod 770 /etc/letsencrypt/archive
 chown -R root:Debian-exim /etc/letsencrypt/archive/${HOSTNAME_FULL}
 
 #Reload dovecot to take advantage of the new ssl cert
-service dovecot reload
+service dovecot restart
 
 ########################################################################
 # Setup EXIM & spamassassin
