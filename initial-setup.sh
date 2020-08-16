@@ -362,7 +362,10 @@ fi
 usermod -aG Debian-exim dovecot
 chown root:Debian-exim /etc/letsencrypt/live
 chmod 770 /etc/letsencrypt/live
-chown root:Debian-exim /etc/letsencrypt/live/${HOSTNAME_FULL}
+chown -R root:Debian-exim /etc/letsencrypt/live/${HOSTNAME_FULL}
+chown root:Debian-exim /etc/letsencrypt/archive
+chmod 770 /etc/letsencrypt/archive
+chown -R root:Debian-exim /etc/letsencrypt/archive/${HOSTNAME_FULL}
 
 #Reload dovecot to take advantage of the new ssl cert
 service dovecot reload
