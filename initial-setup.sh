@@ -141,9 +141,9 @@ then
 	read -p "Desired username:" new_username
 	adduser $new_username
 	echo
-	usermod -aG sudo $new_username
-		echo
-		echo
+	usermod -aG adm,dialout,cdrom,floppy,sudo,audio,dip,video,plugdev,netdev,lxd $new_username
+	echo
+	echo
 fi
 
 
