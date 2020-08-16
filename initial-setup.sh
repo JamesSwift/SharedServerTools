@@ -400,7 +400,7 @@ mkdir -p /etc/exim4/dkim/ 2> /dev/null
 
 apply_template /etc/exim4/check_data_acl check_data_acl
 apply_template /etc/exim4/conf.d/acl/01_acl_check_sender 01_acl_check_sender
-apply_template /etc/exim4/conf.d/aclrouter/350_exim4-config_vdom_aliases 350_exim4-config_vdom_aliases
+apply_template /etc/exim4/conf.d/router/350_exim4-config_vdom_aliases 350_exim4-config_vdom_aliases
 apply_template /etc/exim4/update-exim4.conf.conf update-exim4.conf.conf
 apply_template /etc/exim4/conf.d/main/00_local_macros 00_local_macros
 
