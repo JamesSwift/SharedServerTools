@@ -249,6 +249,8 @@ echo "- mariadb-server"
 echo "- fail2ban"
 echo "- certbot"
 echo
+read -p "Press enter to continue"
+echo 
 
 apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot-imapd dovecot-sieve dovecot-antispam nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
 
