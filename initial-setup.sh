@@ -354,7 +354,14 @@ then
 	echo "Done"
 fi
 
+#Change permissions to allow exim and dovecot to use the ssl cert
+usermod -aG Debian-exim dovecot
+chown root:Debian-exim /etc/letsencrypt/live
+chmod 770 /etc/letsencrypt/live
+chown root:Debian-exim /etc/letsencrypt/live/${HOSTNAME_FULL}
 
+#Reload dovecot to take advantage of the new ssl cert
+service dovecot reload
 
 ########################################################################
 # Setup EXIM & spamassassin
