@@ -354,7 +354,7 @@ then
 	echo
 	echo "Installing certificate:"
 	sed -i "s/#__COMMENT__//g" /etc/nginx/sites-available/default
-	service nginx reload
+	service nginx restart
 	echo "Done"
 fi
 
