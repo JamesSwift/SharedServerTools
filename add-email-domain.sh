@@ -50,7 +50,7 @@ fi
 
 echo
 echo "Type:     TXT"
-echo "Name:     "$(hostname)"._domainkey"
+echo "Name:     "$(hostname)"._domainkey."${domain}
 echo "Value:    v=DKIM1; p="$(cat /etc/exim4/dkim/${domain}/dkim.public | sed '1,1d' | sed '$d' | tr -d '\n')
 echo
 echo "Type:     TXT"
