@@ -401,6 +401,12 @@ echo "Installing custom configuration:"
 mkdir -p /etc/exim4/virtual/ 2> /dev/null
 mkdir -p /etc/exim4/dkim/ 2> /dev/null
 
+chown -R root:Debian-exim /etc/exim4/dkim/
+chmod -R 660 /etc/exim4/dkim/
+chown -R root:Debian-exim /etc/exim4/virtual/
+chmod -R 660 /etc/exim4/dkim/
+
+
 apply_template /etc/exim4/check_data_acl check_data_acl
 apply_template /etc/exim4/conf.d/acl/01_acl_check_sender 01_acl_check_sender
 apply_template /etc/exim4/conf.d/router/350_exim4-config_vdom_aliases 350_exim4-config_vdom_aliases
@@ -423,6 +429,8 @@ else
 	mkdir /etc/exim4/dkim/${HOSTNAME_FULL}/
 	openssl genrsa -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private 2048 > /dev/null 2>&1
 	openssl rsa -in /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public -pubout -outform PEM
+	chown -R root:Debian-exim /etc/exim4/dkim/${HOSTNAME_FULL}/
+	chmod -R 660 /etc/exim4/dkim/${HOSTNAME_FULL}/
 	echo
 	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
