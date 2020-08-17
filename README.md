@@ -1,4 +1,4 @@
-# SharedServerTools v0.1.4
+# SharedServerTools v0.1.5
 Interactive scripts to turn a fresh ubuntu 20.04 install into a manageable, secured, multi-domain web and email server.
 
 These scripts perform common setup steps, including:
