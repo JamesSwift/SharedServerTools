@@ -239,7 +239,7 @@ echo
 
 
 
-//Create the virtual domain file
+#Create the virtual domain file
 if [ ! -f "/etc/exim4/dkim/${domain}/dkim.public" ]
 then
 	echo "postmaster : ${username}@localhost" > "/etc/exim4/virtual/${domain}"

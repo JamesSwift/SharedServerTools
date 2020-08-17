@@ -420,7 +420,7 @@ chmod -R 770 /etc/exim4/dkim/
 chown -R root:Debian-exim /etc/exim4/virtual/
 chmod -R 770 /etc/exim4/dkim/
 
-//Create the virtual domain file
+#Create the virtual domain file
 if [ ! -f "/etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public" ]
 then
 	touch "/etc/exim4/virtual/${HOSTNAME_FULL}"

@@ -63,7 +63,7 @@ echo "Value:    v=DMARC1; p=reject; ruf=mailto:postmaster@${domain}; adkim=s; as
 echo
 
 
-//Create the virtual domain file
+#Create the virtual domain file
 if [ ! -f "/etc/exim4/dkim/${domain}/dkim.public" ]
 then
 	touch "/etc/exim4/virtual/${domain}"
