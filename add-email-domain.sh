@@ -64,7 +64,7 @@ echo
 
 
 #Create the virtual domain file
-if [ ! -f "/etc/exim4/dkim/${domain}/dkim.public" ]
+if [ ! -f "/etc/exim4/virtual/${domain}" ]
 then
 	touch "/etc/exim4/virtual/${domain}"
 	chown root:Debian-exim /etc/exim4/virtual/${domain}

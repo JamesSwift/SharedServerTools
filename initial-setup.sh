@@ -421,7 +421,7 @@ chown -R root:Debian-exim /etc/exim4/virtual/
 chmod -R 770 /etc/exim4/dkim/
 
 #Create the virtual domain file
-if [ ! -f "/etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public" ]
+if [ ! -f "/etc/exim4/virtual/${HOSTNAME_FULL}" ]
 then
 	touch "/etc/exim4/virtual/${HOSTNAME_FULL}"
 	chown root:Debian-exim /etc/exim4/virtual/${HOSTNAME_FULL}

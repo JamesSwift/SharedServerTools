@@ -240,7 +240,7 @@ echo
 
 
 #Create the virtual domain file
-if [ ! -f "/etc/exim4/dkim/${domain}/dkim.public" ]
+if [ ! -f "/etc/exim4/virtual/${domain}" ]
 then
 	echo "postmaster : ${username}@localhost" > "/etc/exim4/virtual/${domain}"
 	chown root:Debian-exim /etc/exim4/virtual/${domain}
