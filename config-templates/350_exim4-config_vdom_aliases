@@ -7,4 +7,5 @@ vdom_aliases:
       retry_use_local_part
       pipe_transport   = address_pipe
       file_transport   = address_file
-      no_more
+      #Having no more breaks local delivery if a virtual file exists for the server hostname
+      #no_more
