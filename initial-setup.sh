@@ -278,6 +278,7 @@ echo "Setting up dovecot:"
 apply_template /etc/dovecot/conf.d/10-ssl.conf 10-ssl.conf
 apply_template /etc/dovecot/conf.d/10-auth.conf 10-auth.conf
 apply_template /etc/dovecot/conf.d/10-master.conf 10-master.conf
+apply_template /etc/dovecot/conf.d/10-mail.conf 10-mail.conf
 chmod 644 /var/www
 echo "Done"
 echo
