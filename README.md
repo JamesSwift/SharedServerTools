@@ -1,4 +1,4 @@
-# SharedServerTools v0.1.3
+# SharedServerTools v0.1.4
 Interactive scripts to turn a fresh ubuntu 20.04 install into a manageable, secured, multi-domain web and email server.
 
 These scripts perform common setup steps, including:
@@ -8,7 +8,9 @@ These scripts perform common setup steps, including:
 - acquiring and installing SSL certificates for each domain
 - hardening SSL parameters
 - creating dkim key pairs to authenticate emails sent from the server
-- setting up spamassassin
+- allow easily adding email aliases
+- setting up dovecot to serve imap & pop3 for local email accounts
+- setting up spamassassin to filter spam
 - defining exactly which email addresses a user can send mail "From: "
 
 Don't worry, the scripts walk you through each change before it is made, nothing should break. After the initial setup, 

@@ -242,7 +242,7 @@ echo "The script will now install the software needed for the server's operation
 echo "- git"
 echo "- exim4 heavy"
 echo "- spamassassin"
-echo "- dovecot-imapd"
+echo "- dovecot imap & pop3"
 echo "- nginx"
 echo "- php-fpm"
 echo "- mariadb-server"
@@ -252,7 +252,7 @@ echo
 read -p "Press enter to continue"
 echo 
 
-apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot-imapd dovecot-sieve dovecot-antispam nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
+apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot-imapd dovecot-pop3d dovecot-sieve dovecot-antispam nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
 
 ######################################################################################################
 # Configure software
