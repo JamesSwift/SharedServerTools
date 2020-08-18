@@ -127,6 +127,7 @@ else
 		echo "Adding git hook to auto checkout pushed commits:"
 		cp ${SCRIPT_DIR}/templates/git-hook.template .git/hooks/post-receive
 		sed -i "s/__USERNAME__/${username}/g" .git/hooks/post-receive
+		sed -i "s#__DOC_ROOT__#${DOC_ROOT}#g" .git/hooks/post-receive
 		chmod +x .git/hooks/post-receive
 	fi
 

@@ -1,5 +1,5 @@
 #!/bin/sh
-cd /home/__USERNAME__/www/
+cd __DOC_ROOT__
 unset GIT_DIR
 git checkout -f
 git submodule update --init --recursive --force
