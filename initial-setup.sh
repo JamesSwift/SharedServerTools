@@ -436,6 +436,7 @@ apply_template /etc/exim4/conf.d/router/350_exim4-config_vdom_aliases 350_exim4-
 apply_template /etc/exim4/conf.d/auth/40_dovecot 40_dovecot
 apply_template /etc/exim4/update-exim4.conf.conf update-exim4.conf.conf
 apply_template /etc/exim4/conf.d/main/00_local_macros 00_local_macros
+apply_template /etc/exim4/conf.d/transport/30_exim4-config_remote_smtp_smarthost 30_exim4-config_remote_smtp_smarthost
 
 update-exim4.conf
 service exim4 restart
