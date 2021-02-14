@@ -418,7 +418,7 @@ mkdir -p /etc/exim4/dkim/ 2> /dev/null
 chown -R root:Debian-exim /etc/exim4/dkim/
 chmod -R 770 /etc/exim4/dkim/
 chown -R root:Debian-exim /etc/exim4/virtual/
-chmod -R 770 /etc/exim4/dkim/
+chmod -R 770 etc/exim4/virtual/
 
 #Create the virtual domain file
 if [ ! -f "/etc/exim4/virtual/${HOSTNAME_FULL}" ]
@@ -454,7 +454,7 @@ else
 	openssl genrsa -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private 2048 > /dev/null 2>&1
 	openssl rsa -in /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public -pubout -outform PEM
 	chown -R root:Debian-exim /etc/exim4/dkim/${HOSTNAME_FULL}/
-	chmod -R 660 /etc/exim4/dkim/${HOSTNAME_FULL}/
+	chmod -R 770 /etc/exim4/dkim/${HOSTNAME_FULL}/
 	echo
 	echo "DKIM is a way of proving which servers have permission to send email for a domain."
 	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
