@@ -1,5 +1,5 @@
-# SharedServerTools v0.2.1
-Interactive scripts to turn a fresh ubuntu 20.04 install into a manageable, secured, multi-domain web and email server.
+# SharedServerTools v0.2.2
+Interactive scripts to turn a fresh ubuntu 22.04 install into a manageable, secured, multi-domain web and email server.
 
 These scripts perform common setup steps, including:
 - setting up hostname and ip addresses

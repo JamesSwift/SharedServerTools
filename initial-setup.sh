@@ -71,7 +71,7 @@ echo "================="
 echo "SharedServerTools"
 echo "================="
 echo
-echo "This script is designed to turn a clean ubuntu 20.04 installation into a working, secured, web, file, & mail server (with spam checking)."
+echo "This script is designed to turn a clean ubuntu 22.04 installation into a working, secured, web, file, & mail server (with spam checking)."
 echo "Ideally this script should be run as the very first thing you do with your new install. It will alter config files with no regard for their current state."
 echo
 echo "The process is quite simple, but you will need to answer some questions first:"
