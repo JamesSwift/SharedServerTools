@@ -1,7 +1,7 @@
 #Make sure user is allowed to send "From:" the address they specified
-deny
-  authenticated = *
-  ! acl = acl_check_sender ${authenticated_id}
+#deny
+#  authenticated = *
+#  ! acl = acl_check_sender ${authenticated_id}
 
 
 ## spamassassin, spams are never big and spamassassin can die on big emails, so we

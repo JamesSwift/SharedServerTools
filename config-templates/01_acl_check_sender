@@ -10,8 +10,8 @@ acl_check_sender:
   deny
     ! condition = ${if eq\
         {$acl_arg1@localhost}\
-        {${if exists{/etc/exim4/virtual/${domain_data:${address:$h_from:}}}\
-          {${lookup {${local_part:${address:$h_from:}}} lsearch{/etc/exim4/virtual/${domain_data:${address:$h_from:}}}}}\
+        {${if exists{/etc/exim4/virtual/${domain:${address:$h_from:}}}\
+          {${lookup {${local_part:${address:$h_from:}}} lsearch{/etc/exim4/virtual/${domain:${address:$h_from:}}}}}\
           {fail}\
         }}\
       }
@@ -23,8 +23,8 @@ acl_check_sender:
         {eq {$h_sender:}{}}\
         {eq\
            {$acl_arg1@localhost}\
-           {${if exists{/etc/exim4/virtual/${domain_data:${address:$h_sender:}}}\
-             {${lookup {${local_part:${address:$h_sender:}}} lsearch{/etc/exim4/virtual/${domain_data:${address:$h_sender:}}}}}\
+           {${if exists{/etc/exim4/virtual/${domain:${address:$h_sender:}}}\
+             {${lookup {${local_part:${address:$h_sender:}}} lsearch{/etc/exim4/virtual/${domain:${address:$h_sender:}}}}}\
              {fail}\
            }}\
         }\

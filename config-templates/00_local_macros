@@ -8,11 +8,9 @@ DKIM_SELECTOR = __HOSTNAME_SHORT__
 
 DKIM_DOMAIN = ${sg{${lc:${domain_data:$h_from:}}}{^www\.}{}}
 
-# The file is based on the outgoing domain-name in the from-header.
-DKIM_FILE = /etc/exim4/dkim/${lc:${domain_data:$h_from:}}/dkim.private
-
-# If key exists then use it, if not don't.
-DKIM_PRIVATE_KEY = ${if exists{DKIM_FILE}{DKIM_FILE}{0}}
+DKIM_PRIVATE_KEY = ${lookup {${sender_address_domain}} \
+                   dsearch,ret=full {/etc/exim4/dkim} \
+                   {$value/dkim.private} {false}}
 
 daemon_smtp_ports = 25 : 465 : 587
 tls_on_connect_ports = 465 : 587
