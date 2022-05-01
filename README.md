@@ -1,4 +1,4 @@
-# SharedServerTools v0.2.2
+# SharedServerTools v0.2.3
 Interactive scripts to turn a fresh ubuntu 22.04 install into a manageable, secured, multi-domain web and email server.
 
 These scripts perform common setup steps, including:

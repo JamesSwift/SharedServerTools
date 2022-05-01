@@ -393,9 +393,6 @@ echo "================"
 echo
 echo "Installing custom configuration:"
 apply_template /etc/default/spamassassin spamassassin
-echo
-echo "Creating spamd user"
-adduser --disabled-password --gecos "" spamd
 
 echo
 echo "Enabling the service and starting it:"
