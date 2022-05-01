@@ -252,7 +252,7 @@ echo
 read -p "Press enter to continue"
 echo 
 
-apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot-imapd dovecot-pop3d dovecot-sieve dovecot-antispam nginx php7.4-fpm php7.4-mysql mariadb-server fail2ban certbot
+apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot-imapd dovecot-pop3d dovecot-sieve dovecot-antispam nginx php8.1-fpm php8.1-mysql mariadb-server fail2ban certbot
 
 ######################################################################################################
 # Configure software
@@ -269,8 +269,8 @@ echo "Done"
 echo
 echo
 echo "Setting up php:"
-apply_template /etc/php/7.4/fpm/conf.d/php.ini php.ini
-service php7.4-fpm restart
+apply_template /etc/php/8.1/fpm/conf.d/php.ini php.ini
+service php8.1-fpm restart
 echo "Done"
 echo
 echo
@@ -418,7 +418,7 @@ mkdir -p /etc/exim4/dkim/ 2> /dev/null
 chown -R root:Debian-exim /etc/exim4/dkim/
 chmod -R 770 /etc/exim4/dkim/
 chown -R root:Debian-exim /etc/exim4/virtual/
-chmod -R 770 etc/exim4/virtual/
+chmod -R 770 /etc/exim4/virtual/
 
 #Create the virtual domain file
 if [ ! -f "/etc/exim4/virtual/${HOSTNAME_FULL}" ]
