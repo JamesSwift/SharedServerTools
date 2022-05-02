@@ -240,9 +240,6 @@ echo "======================"
 echo
 echo "The script will now install the software needed for the server's operation from apt. Namely:"
 echo "- git"
-echo "- exim4 heavy"
-echo "- spamassassin"
-echo "- dovecot imap & pop3"
 echo "- nginx"
 echo "- php-fpm"
 echo "- mariadb-server"
@@ -252,7 +249,7 @@ echo
 read -p "Press enter to continue"
 echo 
 
-apt install -y git sa-exim exim4-daemon-heavy spamassassin spamc dovecot-imapd dovecot-pop3d dovecot-sieve dovecot-antispam nginx php8.1-fpm php8.1-mysql mariadb-server fail2ban certbot
+apt install -y git nginx php8.1-fpm php8.1-mysql mariadb-server fail2ban certbot
 
 ######################################################################################################
 # Configure software
@@ -271,15 +268,6 @@ echo
 echo "Setting up php:"
 apply_template /etc/php/8.1/fpm/conf.d/php.ini php.ini
 service php8.1-fpm restart
-echo "Done"
-echo
-echo
-echo "Setting up dovecot:"
-apply_template /etc/dovecot/conf.d/10-ssl.conf 10-ssl.conf
-apply_template /etc/dovecot/conf.d/10-auth.conf 10-auth.conf
-apply_template /etc/dovecot/conf.d/10-master.conf 10-master.conf
-apply_template /etc/dovecot/conf.d/10-mail.conf 10-mail.conf
-chmod 644 /var/www
 echo "Done"
 echo
 echo
@@ -360,119 +348,6 @@ then
 	service nginx restart
 	echo "Done"
 fi
-
-#Change permissions to allow exim and dovecot to use the ssl cert
-usermod -aG Debian-exim dovecot
-
-chown root:Debian-exim /etc/letsencrypt/live
-chmod 770 /etc/letsencrypt/live
-chmod g+s /etc/letsencrypt/live
-
-chown root:Debian-exim /etc/letsencrypt/archive
-chmod 770 /etc/letsencrypt/archive
-chmod g+s /etc/letsencrypt/archive
-
-chown -R root:Debian-exim /etc/letsencrypt/archive/${HOSTNAME_FULL}
-chmod g+s /etc/letsencrypt/archive/${HOSTNAME_FULL}
-
-chown -R root:Debian-exim /etc/letsencrypt/live/${HOSTNAME_FULL}
-chmod g+s /etc/letsencrypt/live/${HOSTNAME_FULL}
-
-#Change mode of privkey to allow group read (will be preserved across new keys by certbot)
-chmod 640 /etc/letsencrypt/archive/${HOSTNAME_FULL}/privkey*.pem
-
-#Reload dovecot to take advantage of the new ssl cert
-service dovecot restart
-
-########################################################################
-# Setup EXIM & spamassassin
-
-echo "================"
-echo "Spam Assasin"
-echo "================"
-echo
-echo "Installing custom configuration:"
-apply_template /etc/default/spamassassin spamassassin
-
-echo
-echo "Enabling the service and starting it:"
-systemctl enable spamassassin.service 
-systemctl restart spamassassin.service 
-echo
-echo
-
-
-#clear
-echo "================"
-echo "EXIM Mail Server"
-echo "================"
-echo
-echo "Installing custom configuration:"
-
-mkdir -p /etc/exim4/virtual/ 2> /dev/null
-mkdir -p /etc/exim4/dkim/ 2> /dev/null
-
-chown -R root:Debian-exim /etc/exim4/dkim/
-chmod -R 770 /etc/exim4/dkim/
-chown -R root:Debian-exim /etc/exim4/virtual/
-chmod -R 770 /etc/exim4/virtual/
-
-#Create the virtual domain file
-if [ ! -f "/etc/exim4/virtual/${HOSTNAME_FULL}" ]
-then
-	touch "/etc/exim4/virtual/${HOSTNAME_FULL}"
-	chown root:Debian-exim /etc/exim4/virtual/${HOSTNAME_FULL}
-	chmod 770 /etc/exim4/virtual/${HOSTNAME_FULL}
-	service exim4 reload
-fi
-
-
-apply_template /etc/exim4/check_data_acl check_data_acl
-apply_template /etc/exim4/conf.d/acl/01_acl_check_sender 01_acl_check_sender
-apply_template /etc/exim4/conf.d/router/350_exim4-config_vdom_aliases 350_exim4-config_vdom_aliases
-apply_template /etc/exim4/conf.d/auth/40_dovecot 40_dovecot
-apply_template /etc/exim4/update-exim4.conf.conf update-exim4.conf.conf
-apply_template /etc/exim4/conf.d/main/00_local_macros 00_local_macros
-apply_template /etc/exim4/conf.d/transport/30_exim4-config_remote_smtp_smarthost 30_exim4-config_remote_smtp_smarthost
-
-update-exim4.conf
-service exim4 restart
-
-
-echo
-if [ -f "/etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public" ]
-then
-	echo "DKIM keys were previously generated for this domain."
-	echo
-	echo "If you experience issues sending mail, please ensure the following entires are in your DNS record for" ${HOSTNAME_FULL}
-else
-	echo "Generating a DKIM key for sending emails from the server's domain."
-	echo
-	mkdir /etc/exim4/dkim/${HOSTNAME_FULL}/
-	openssl genrsa -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private 2048 > /dev/null 2>&1
-	openssl rsa -in /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.private -out /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public -pubout -outform PEM
-	chown -R root:Debian-exim /etc/exim4/dkim/${HOSTNAME_FULL}/
-	chmod -R 770 /etc/exim4/dkim/${HOSTNAME_FULL}/
-	echo
-	echo "DKIM is a way of proving which servers have permission to send email for a domain."
-	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
-	echo
-	echo "To enable it, add the following entires to your DNS record for" ${HOSTNAME_FULL}
-fi
-
-echo
-echo "Type:     TXT"
-echo "Name:     ${HOSTNAME_SHORT}._domainkey."${HOSTNAME_FULL}
-echo "Value:    v=DKIM1; p="$(cat /etc/exim4/dkim/${HOSTNAME_FULL}/dkim.public | sed '1,1d' | sed '$d' | tr -d '\n')
-echo
-echo "Type:     TXT"
-echo "Name:     "${HOSTNAME_FULL}
-echo "Value:    v=spf1 a mx -all"
-echo
-echo "Type:     TXT"
-echo "Name:     _dmarc."${HOSTNAME_FULL}
-echo "Value:    v=DMARC1; p=reject; ruf=mailto:postmaster@${HOSTNAME_FULL}; adkim=s; aspf=s"
-echo
 
 
 echo

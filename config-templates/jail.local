@@ -7,14 +7,6 @@ bantime  = 1h
 findtime  = 1h
 maxretry = 3
 
-[exim]
-enabled = true
-bantime  = 1h
-maxretry = 3
-
-[dovecot]
-enabled = true
-
 [nginx-botsearch]
 enabled = true
 

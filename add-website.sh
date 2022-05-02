@@ -203,58 +203,5 @@ else
 	service nginx reload
 fi
 
-echo
-if [ -f "/etc/exim4/dkim/${domain}/dkim.public" ]
-then
-	echo "DKIM keys were previously generated for this domain."
-	echo
-	echo "If you experience issues sending mail, please ensure the following entires are in your DNS record for" ${domain}
-else
-	echo "Generating a DKIM key for sending emails for this domain from this server."
-	echo
-	mkdir /etc/exim4/dkim/${domain}/
-	openssl genrsa -out /etc/exim4/dkim/${domain}/dkim.private 2048 > /dev/null 2>&1
-	openssl rsa -in /etc/exim4/dkim/${domain}/dkim.private -out /etc/exim4/dkim/${domain}/dkim.public -pubout -outform PEM
-	chown -R root:Debian-exim /etc/exim4/dkim/${domain}/
-	chmod -R 770 /etc/exim4/dkim/${domain}/
-	echo
-	echo "DKIM is a way of proving which servers have permission to send email for a domain."
-	echo "Email clients check for a DKIM DNS record when determining if a message is spam."
-	echo
-	echo "Please add the following entires to your DNS record for" ${domain}
-fi
-
-echo
-echo "Type:     TXT"
-echo "Name:     "$(hostname)"._domainkey."${domain}
-echo "Value:    v=DKIM1; p="$(cat /etc/exim4/dkim/${domain}/dkim.public | sed '1,1d' | sed '$d' | tr -d '\n')
-echo
-echo "Type:     TXT"
-echo "Name:     "${domain}
-echo "Value:    v=spf1 a mx -all"
-echo
-echo "Type:     TXT"
-echo "Name:     _dmarc."${domain}
-echo "Value:    v=DMARC1; p=reject; ruf=mailto:postmaster@${domain}; adkim=s; aspf=s"
-echo
-
-
-
-#Create the virtual domain file
-if [ ! -f "/etc/exim4/virtual/${domain}" ]
-then
-	echo "postmaster : ${username}@localhost" > "/etc/exim4/virtual/${domain}"
-	chown root:Debian-exim /etc/exim4/virtual/${domain}
-	chmod 770 /etc/exim4/virtual/${domain}
-	service exim4 reload
-fi
-
-echo
-echo "To setup routing from addresses at this domain to local users edit the file: /etc/exim4/virtual/${domain}"
-echo
-echo "For example to send info@${domain} to local user ${username} add the following:"
-echo
-echo "info : ${username}@localhost"
-
 
 echo "The website has been configured. You can run this script again to reconfigure it or see these details again, if you wish."
