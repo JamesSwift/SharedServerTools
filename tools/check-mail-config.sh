@@ -71,6 +71,213 @@ if grep -R '__[A-Z0-9_]*__' "$ROOT"/config-templates/00_local_macros \
 	echo "(info) leftover placeholders shown above if any unexpected"
 fi
 
+echo
+echo "== site user: www-data group is reversed before userdel =="
+if grep -q 'usermod -aG "$username" www-data' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'sst_nginx_join_owner_group' "$ROOT"/add-website.sh; then
+	echo "OK   add-website still adds www-data to the owner group"
+else
+	echo "FAIL: live sites must still run usermod -aG USER www-data"
+	fail=1
+fi
+if grep -q 'gpasswd -d www-data' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'userdel -r' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'sst_delete_site_user' "$ROOT"/remove-website.sh; then
+	echo "OK   remove-website deletes users via gpasswd then userdel -r"
+else
+	echo "FAIL: site/user removal must drop www-data from the group then userdel -r"
+	fail=1
+fi
+
+# Remaining-site detection (no root needed).
+# shellcheck source=/dev/null
+. "$ROOT/tools/sst-lib.sh"
+site_tmp=$(mktemp -d)
+SST_NGINX_AVAILABLE=$site_tmp
+printf '%s\n' "#__OWNER__=alice" > "$site_tmp/alice.com"
+printf '%s\n' "#__OWNER__=alice2" > "$site_tmp/other.com"
+if sst_owner_has_remaining_sites alice && sst_owner_has_remaining_sites alice2 \
+	&& ! sst_owner_has_remaining_sites bob; then
+	echo "OK   sst_owner_has_remaining_sites matches whole owner names"
+else
+	echo "FAIL: sst_owner_has_remaining_sites matching"
+	fail=1
+fi
+rm -rf "$site_tmp"
+
+echo
+echo "== audit-mail.sh finds sst-lib.sh =="
+if bash "$ROOT/tools/audit-mail.sh" >/dev/null; then
+	echo "OK   ./tools/audit-mail.sh runs from the repo"
+else
+	echo "FAIL: ./tools/audit-mail.sh exited non-zero"
+	fail=1
+fi
+audit_copy=$(mktemp -d)
+cp "$ROOT/tools/audit-mail.sh" "$audit_copy/audit-mail.sh"
+audit_err=$(mktemp)
+if bash "$audit_copy/audit-mail.sh" >/dev/null 2>"$audit_err"; then
+	echo "FAIL: audit-mail.sh without sst-lib.sh should exit"
+	fail=1
+elif grep -q 'sst-lib.sh' "$audit_err" && ! grep -q 'sst_init_vars: command not found' "$audit_err"; then
+	echo "OK   missing sst-lib.sh is a clear error (not sst_init_vars)"
+else
+	echo "FAIL: expected a sst-lib.sh error, got:"
+	sed 's/^/  /' "$audit_err"
+	fail=1
+fi
+rm -rf "$audit_copy" "$audit_err"
+
+echo
+echo "== add-website refreshes the current php-fpm pool on existing sites =="
+pool_calls=$(grep -c 'sst_install_php_fpm_pool' "$ROOT"/add-website.sh || true)
+if [[ "$pool_calls" -ge 2 ]]; then
+	echo "OK   existing-site path rewrites the php-fpm pool"
+else
+	echo "FAIL: existing-site branch must call sst_install_php_fpm_pool"
+	fail=1
+fi
+if grep -q 'sst_php_fpm_pool_dir' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'sst_install_php_fpm_pool' "$ROOT"/add-website.sh; then
+	echo "OK   pool path comes from sst_php_fpm_pool_dir (installed php-fpm)"
+else
+	echo "FAIL: php-fpm pool must use sst_php_fpm_pool_dir, not a hardcoded 8.1/7.4 path"
+	fail=1
+fi
+if grep -E 'php[0-9]+\.[0-9]+/fpm/pool' "$ROOT"/add-website.sh "$ROOT"/remove-website.sh; then
+	echo "FAIL: website scripts still hardcode a php-fpm pool path"
+	fail=1
+else
+	echo "OK   no hardcoded phpX.Y pool paths in add/remove-website"
+fi
+
+echo
+echo "== setup-mail: 26.04 Dovecot 2.3 leftovers / 20.04 refuse / internet mode =="
+if grep -q '20.04' "$ROOT"/setup-mail.sh && grep -q 'exit 1' "$ROOT"/setup-mail.sh; then
+	echo "OK   setup-mail still refuses Ubuntu 20.04"
+else
+	echo "FAIL: setup-mail.sh must refuse to run on 20.04"
+	fail=1
+fi
+if grep -q 'sst_quarantine_dovecot_23_files' "$ROOT"/setup-mail.sh; then
+	echo "OK   setup-mail quarantines Dovecot 2.3 10-*.conf on 2.4"
+else
+	echo "FAIL: setup-mail.sh must move old Dovecot 2.3 10-*.conf aside"
+	fail=1
+fi
+if grep -q "dc_eximconfig_configtype='internet'" "$ROOT"/config-templates/update-exim4.conf.conf \
+	&& grep -q "dc_smarthost=''" "$ROOT"/config-templates/update-exim4.conf.conf; then
+	echo "OK   Exim template is internet mode (no smarthost)"
+else
+	echo "FAIL: Exim must stay internet mode, not smarthost"
+	fail=1
+fi
+
+dov_tmp=$(mktemp -d)
+printf '%s\n' 'mail_location = maildir:~/Maildir' > "$dov_tmp/10-mail.conf"
+printf '%s\n' '# distro 2.4 mail' > "$dov_tmp/10-mail.conf.dpkg-dist"
+printf '%s\n' 'ssl_cert = </etc/dovecot/private/dovecot.pem' > "$dov_tmp/10-ssl.conf"
+printf '%s\n' 'mail_path = ~/Maildir' > "$dov_tmp/10-auth.conf"
+SST_DOVECOT_CONF_D=$dov_tmp
+sst_quarantine_dovecot_23_files
+if [[ -f "$dov_tmp/10-mail.conf" ]] && grep -q 'distro 2.4 mail' "$dov_tmp/10-mail.conf" \
+	&& ls "$dov_tmp"/10-mail.conf.sst-pre24-* >/dev/null 2>&1 \
+	&& ls "$dov_tmp"/10-ssl.conf.sst-pre24-* >/dev/null 2>&1 \
+	&& [[ ! -f "$dov_tmp/10-ssl.conf" ]] \
+	&& [[ -f "$dov_tmp/10-auth.conf" ]]; then
+	echo "OK   sst_quarantine_dovecot_23_files moves 2.3 files and restores dpkg-dist"
+else
+	echo "FAIL: Dovecot 2.3 quarantine behaviour"
+	ls -la "$dov_tmp"
+	fail=1
+fi
+rm -rf "$dov_tmp"
+unset SST_DOVECOT_CONF_D || true
+
+if grep -q 'initial-setup.sh, add-website.sh, and setup-mail.sh' "$ROOT"/README.md; then
+	echo "OK   README Upgrading names the scripts to re-run"
+else
+	echo "FAIL: README Upgrading should say to re-run initial-setup.sh / add-website.sh / setup-mail.sh"
+	fail=1
+fi
+
+if [[ $EUID -eq 0 ]] && getent passwd www-data >/dev/null && command -v userdel >/dev/null; then
+	live_u=ssttmpusr
+	userdel -r "$live_u" >/dev/null 2>&1 || true
+	groupdel "$live_u" >/dev/null 2>&1 || true
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	if id -nG www-data | grep -qw "$live_u"; then
+		echo "OK   sst_nginx_join_owner_group adds www-data"
+	else
+		echo "FAIL: www-data was not added to ${live_u}"
+		fail=1
+	fi
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	sst_delete_site_user "$live_u"
+	if getent passwd "$live_u" >/dev/null || getent group "$live_u" >/dev/null; then
+		echo "FAIL: user/group ${live_u} left behind after sst_delete_site_user"
+		fail=1
+	elif id -nG www-data | grep -qw "$live_u"; then
+		echo "FAIL: www-data still in leftover ${live_u} group"
+		fail=1
+	else
+		echo "OK   sst_delete_site_user removes user and group"
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+
+	# Last site gone but the unix user is kept: drop www-data, keep the account.
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	sst_cleanup_owner_if_no_sites "$live_u"
+	if ! getent passwd "$live_u" >/dev/null; then
+		echo "FAIL: cleanup without remaining sites must not delete the unix user"
+		fail=1
+	elif id -nG www-data | grep -qw "$live_u"; then
+		echo "FAIL: www-data still in ${live_u} after last site removed"
+		fail=1
+	else
+		echo "OK   last site gone: www-data leaves the group, user kept"
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+	sst_delete_site_user "$live_u"
+
+	# Owner still has another site: leave www-data in the group.
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	printf '%s\n' "#__OWNER__=${live_u}" > "$SST_NGINX_AVAILABLE/still-live.example"
+	sst_cleanup_owner_if_no_sites "$live_u"
+	if id -nG www-data | grep -qw "$live_u" && getent passwd "$live_u" >/dev/null; then
+		echo "OK   remaining sites keep www-data in the owner group"
+	else
+		echo "FAIL: www-data was removed while a site still exists"
+		fail=1
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+	sst_delete_site_user "$live_u"
+
+	# Leftover group from userdel -r without gpasswd first.
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	userdel -r "$live_u" >/dev/null 2>&1 || true
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	sst_cleanup_owner_if_no_sites "$live_u"
+	if getent group "$live_u" >/dev/null; then
+		echo "FAIL: leftover group ${live_u} not cleaned"
+		fail=1
+	else
+		echo "OK   leftover group with no sites is removed"
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+	userdel -r "$live_u" >/dev/null 2>&1 || true
+	groupdel "$live_u" >/dev/null 2>&1 || true
+else
+	echo "(not root; skipped live userdel group checks)"
+fi
+unset SST_NGINX_AVAILABLE || true
+
 if command -v exim4 >/dev/null 2>&1; then
 	echo
 	echo "== installed Exim =="

@@ -38,8 +38,7 @@ fi
 
 DOVECOT_VER=$(sst_dovecot_major_minor)
 if [[ -n "$DOVECOT_VER" && "$DOVECOT_VER" == 2.3* ]]; then
-	echo "Installed Dovecot ${DOVECOT_VER}: if IMAP fails to start, check 10-ssl.conf / 10-mail.conf"
-	echo "for old setting names (mail_location, ssl_cert = <)."
+	echo "Installed Dovecot ${DOVECOT_VER} (this script's drop-in is for 2.4 on Ubuntu 26.04)."
 	echo
 fi
 
@@ -81,13 +80,10 @@ apt-get install -y exim4-daemon-heavy dovecot-imapd dovecot-pop3d dovecot-sieve 
 
 echo
 echo "Setting up Dovecot:"
-for f in /etc/dovecot/conf.d/10-ssl.conf /etc/dovecot/conf.d/10-mail.conf \
-	/etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-auth.conf; do
-	if [[ -f "$f" ]] && grep -qE '^\s*(mail_location|ssl_cert|ssl_key)\s*=' "$f"; then
-		echo "NOTE: $f still has old Dovecot settings. IMAP may not start until you use the"
-		echo "      distro file plus 99-sharedservertools.conf."
-	fi
-done
+DOVECOT_VER=$(sst_dovecot_major_minor)
+if [[ "$OS_ID" == "26.04" || "$DOVECOT_VER" == 2.4* ]]; then
+	sst_quarantine_dovecot_23_files
+fi
 apply_template /etc/dovecot/conf.d/99-sharedservertools.conf 99-sharedservertools-dovecot.conf
 chmod 644 /var/www 2>/dev/null || true
 echo "Done"

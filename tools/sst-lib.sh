@@ -62,6 +62,28 @@ sst_php_default_sock() {
 	echo "/run/php/php$(sst_detect_php_version)-fpm.sock"
 }
 
+# Write this owner's pool into the installed php-fpm pool.d (drops older-version copies).
+sst_install_php_fpm_pool() {
+	local username=$1
+	local dest old
+	if [[ -z "${SCRIPT_DIR:-}" ]]; then
+		sst_die "sst_install_php_fpm_pool: SCRIPT_DIR is not set."
+	fi
+	mkdir -p "$(sst_php_fpm_pool_dir)" || sst_die "Could not create $(sst_php_fpm_pool_dir)."
+	dest="$(sst_php_fpm_pool_dir)/${username}.conf"
+	echo "Writing php-fpm pool ${dest}"
+	cp "${SCRIPT_DIR}/templates/fpm-pool.template" "$dest" || sst_die "Could not write ${dest}."
+	sed -i "s/__USERNAME__/${username}/g" "$dest"
+	if [[ -d /etc/php ]]; then
+		for old in /etc/php/*/fpm/pool.d/"${username}.conf"; do
+			[[ -f "$old" ]] || continue
+			if [[ "$old" != "$dest" ]]; then
+				rm -f "$old"
+			fi
+		done
+	fi
+}
+
 # Skip groups that do not exist on this install.
 sst_add_admin_groups() {
 	local username=$1
@@ -95,6 +117,72 @@ sst_ensure_site_user() {
 	fi
 	if [[ -d "/home/${username}" ]]; then
 		chmod 0750 "/home/${username}" || true
+	fi
+}
+
+# nginx (www-data) needs group read on this user's ~/www.
+sst_nginx_join_owner_group() {
+	local username=$1
+	usermod -aG "$username" www-data
+}
+
+# Reverse sst_nginx_join_owner_group so userdel can remove the group.
+sst_nginx_leave_owner_group() {
+	local username=$1
+	if getent group "$username" >/dev/null 2>&1; then
+		gpasswd -d www-data "$username" 2>/dev/null || true
+	fi
+}
+
+# True if any nginx site config is still owned by this user.
+sst_owner_has_remaining_sites() {
+	local username=$1
+	local f
+	[[ -d "${SST_NGINX_AVAILABLE}" ]] || return 1
+	for f in "${SST_NGINX_AVAILABLE}"/*; do
+		[[ -f "$f" ]] || continue
+		if grep -qE "^#__OWNER__=${username}[[:space:]]*$" "$f"; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Drop www-data from the group, userdel -r, then remove any leftover group.
+sst_delete_site_user() {
+	local username=$1
+	if ! sst_valid_site_user "$username"; then
+		sst_die "Refusing to delete '${username}'."
+	fi
+	sst_nginx_leave_owner_group "$username"
+	if getent passwd "$username" >/dev/null; then
+		userdel -r "$username" || true
+		if getent passwd "$username" >/dev/null; then
+			sst_die "userdel ${username} failed."
+		fi
+	fi
+	if [[ -d "/home/${username}" ]]; then
+		rm -rf "/home/${username}"
+	fi
+	if getent group "$username" >/dev/null 2>&1 && ! getent passwd "$username" >/dev/null; then
+		sst_nginx_leave_owner_group "$username"
+		groupdel "$username" 2>/dev/null || true
+	fi
+}
+
+# If this owner has no sites left, drop nginx's extra group membership.
+# If the unix user is already gone, remove a leftover namesake group.
+sst_cleanup_owner_if_no_sites() {
+	local username=$1
+	if ! sst_valid_site_user "$username"; then
+		return 0
+	fi
+	if sst_owner_has_remaining_sites "$username"; then
+		return 0
+	fi
+	sst_nginx_leave_owner_group "$username"
+	if ! getent passwd "$username" >/dev/null && getent group "$username" >/dev/null 2>&1; then
+		groupdel "$username" 2>/dev/null || true
 	fi
 }
 
@@ -161,6 +249,34 @@ sst_dovecot_major_minor() {
 		ver=$(dovecot --version 2>/dev/null | awk '{print $1}')
 	fi
 	echo "${ver:-}"
+}
+
+sst_dovecot_conf_has_23_names() {
+	local f=$1
+	[[ -f "$f" ]] && grep -qE '^\s*(mail_location|ssl_cert|ssl_key)\s*=' "$f"
+}
+
+# Move SST's old Dovecot 2.3 10-*.conf aside so distro files + 99-sharedservertools.conf run.
+sst_quarantine_dovecot_23_files() {
+	local confd=${SST_DOVECOT_CONF_D:-/etc/dovecot/conf.d}
+	local stamp f path dest
+	stamp=$(date +%Y%m%d%H%M%S)
+	for f in 10-ssl.conf 10-mail.conf 10-master.conf 10-auth.conf; do
+		path="${confd}/${f}"
+		if ! sst_dovecot_conf_has_23_names "$path"; then
+			continue
+		fi
+		dest="${path}.sst-pre24-${stamp}"
+		echo "Moving Dovecot 2.3 ${path} aside (${dest})."
+		mv "$path" "$dest"
+		if [[ -f "${path}.dpkg-dist" ]]; then
+			cp -a "${path}.dpkg-dist" "$path"
+		elif [[ -f "/usr/share/dovecot/conf.d/${f}" ]]; then
+			cp -a "/usr/share/dovecot/conf.d/${f}" "$path"
+		elif [[ -f "/usr/share/doc/dovecot-core/example-config/conf.d/${f}" ]]; then
+			cp -a "/usr/share/doc/dovecot-core/example-config/conf.d/${f}" "$path"
+		fi
+	done
 }
 
 sst_init_vars() {
