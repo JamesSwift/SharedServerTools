@@ -99,6 +99,87 @@ else
 fi
 
 echo
+echo "== templates: SA junk router / transport / tag threshold =="
+sa_router="$ROOT/config-templates/550_exim4-config_sa_junk"
+sa_transport="$ROOT/config-templates/30_exim4-config_maildir_junk"
+if [[ -f "$sa_router" ]] && grep -q 'driver = accept' "$sa_router" \
+	&& grep -q 'domains = +local_domains' "$sa_router" \
+	&& grep -q 'check_local_user' "$sa_router" \
+	&& grep -q 'local_parts = ! root' "$sa_router" \
+	&& grep -q 'eqi' "$sa_router" \
+	&& grep -q 'X-SA-Status' "$sa_router" \
+	&& grep -q 'transport = maildir_junk' "$sa_router"; then
+	echo "OK   sa_junk router files X-SA-Status Yes via maildir_junk"
+else
+	echo "FAIL: 550_exim4-config_sa_junk must accept local users (not root) when X-SA-Status is Yes"
+	fail=1
+fi
+if [[ -f "$sa_transport" ]] && grep -q 'driver = appendfile' "$sa_transport" \
+	&& grep -q 'maildir_format' "$sa_transport" \
+	&& grep -q 'create_directory' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.Junk}' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.Spam}' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.my spam}' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.my junk}' "$sa_transport" \
+	&& grep -q 'MAILDIR_HOME_DIRECTORY_MODE' "$sa_transport" \
+	&& grep -q 'MAILDIR_HOME_MODE' "$sa_transport" \
+	&& grep -q 'mode_fail_narrower = false' "$sa_transport" \
+	&& ! grep -qE '^[[:space:]]*directory = \$home/Maildir/\.Junk[[:space:]]*$' "$sa_transport"; then
+	echo "OK   maildir_junk uses exists{} Junk/Spam/my spam/my junk, fallback .Junk"
+else
+	echo "FAIL: maildir_junk must nested-exists existing junk folders, fallback Maildir/.Junk"
+	fail=1
+fi
+if grep -q 'spam_score_int}{30}' "$ROOT"/config-templates/check_data_acl \
+	&& grep -q 'X-SA-Status: Yes' "$ROOT"/config-templates/check_data_acl \
+	&& grep -q 'spam_score_int}{70}' "$ROOT"/config-templates/check_data_acl \
+	&& ! grep -q 'spam_score_int}{50}' "$ROOT"/config-templates/check_data_acl; then
+	echo "OK   check_data_acl tags at 3.0 and rejects at 7.0"
+else
+	echo "FAIL: X-SA-Status Yes at 30 (3.0); reject still at 70 (7.0)"
+	fail=1
+fi
+if grep -q '550_exim4-config_sa_junk' "$ROOT"/setup-mail.sh \
+	&& grep -q '30_exim4-config_maildir_junk' "$ROOT"/setup-mail.sh \
+	&& grep -q 'conf.d/transport' "$ROOT"/setup-mail.sh; then
+	echo "OK   setup-mail.sh installs sa_junk router and transport"
+else
+	echo "FAIL: setup-mail.sh must apply_template the junk router and transport"
+	fail=1
+fi
+if grep -q '[.]forward' "$ROOT"/README.md; then
+	echo "FAIL: README must not require ~/.forward"
+	fail=1
+elif grep -q 'existing Junk/Spam folder' "$ROOT"/README.md \
+	&& grep -q 'Junk is created' "$ROOT"/README.md \
+	&& grep -q 'Trash/Bin' "$ROOT"/README.md \
+	&& grep -q '30 days' "$ROOT"/README.md; then
+	echo "OK   README files tagged spam into existing Junk/Spam (create Junk if none)"
+else
+	echo "FAIL: README should file tagged spam into the existing Junk/Spam folder"
+	fail=1
+fi
+expire_job="$ROOT/config-templates/sst-expire-junk"
+if [[ -f "$expire_job" ]] \
+	&& grep -q '/home/\*/Maildir' "$expire_job" \
+	&& grep -q 'mailbox "$box"' "$expire_job" \
+	&& grep -q 'savedbefore 30d' "$expire_job" \
+	&& grep -q 'junk|spam|trash|bin|deleted' "$expire_job" \
+	&& grep -q '"deleted items"' "$expire_job" \
+	&& grep -q '"my junk"' "$expire_job" \
+	&& ! grep -q 'expunge -A' "$expire_job" \
+	&& ! grep -qE 'mailbox (INBOX|Archive|Sent|Drafts)' "$expire_job" \
+	&& grep -q 'apply_template /etc/cron.daily/sst-expire-junk' "$ROOT"/setup-mail.sh \
+	&& grep -q 'rm -f /etc/cron.daily/sharedservertools-expire-junk' "$ROOT"/setup-mail.sh \
+	&& ! grep -q 'crontab' "$ROOT"/setup-mail.sh \
+	&& [[ ! -f "$ROOT/config-templates/sharedservertools-expire-junk" ]]; then
+	echo "OK   setup-mail.sh installs one cron.daily sst-expire-junk (Maildir users, no -A)"
+else
+	echo "FAIL: sst-expire-junk must iterate /home/*/Maildir, not doveadm -A, and not stack old cron files"
+	fail=1
+fi
+
+echo
 echo "== templates: Maildir modes =="
 if ! grep -q 'MAILDIR_HOME_DIRECTORY_MODE = 0700' "$ROOT"/config-templates/00_local_macros; then
 	echo "FAIL: Maildir directory mode should be 0700"

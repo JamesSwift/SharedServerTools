@@ -1,0 +1,26 @@
+# Clone of Debian maildir_home. Use the user's existing junk/spam
+# folder if present; otherwise create Maildir/.Junk.
+
+maildir_junk:
+  driver = appendfile
+  directory = ${if exists{$home/Maildir/.Junk}{$home/Maildir/.Junk}{\
+    ${if exists{$home/Maildir/.Spam}{$home/Maildir/.Spam}{\
+      ${if exists{$home/Maildir/.my spam}{$home/Maildir/.my spam}{\
+        ${if exists{$home/Maildir/.my junk}{$home/Maildir/.my junk}{\
+          $home/Maildir/.Junk}}}}}}}}
+  create_directory
+  delivery_date_add
+  envelope_to_add
+  return_path_add
+  maildir_format
+  .ifdef MAILDIR_HOME_DIRECTORY_MODE
+  directory_mode = MAILDIR_HOME_DIRECTORY_MODE
+  .else
+  directory_mode = 0700
+  .endif
+  .ifdef MAILDIR_HOME_MODE
+  mode = MAILDIR_HOME_MODE
+  .else
+  mode = 0600
+  .endif
+  mode_fail_narrower = false

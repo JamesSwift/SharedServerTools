@@ -66,15 +66,10 @@ also create the dkim files to sign outgoing messages.
 
 
 # Spam Filtering
-This tool sets up spamassassin for you, so that each message gets a spam score. If you 
-wish to have spam put into a user's Spam folder automatically, add the following file 
-as `~/.forward`:
-
-    #   Exim filter   <<== do not edit or remove this line!
-    if $h_X-SA-Status: matches "^Yes" then
-        save $home/Maildir/.Spam
-        finish
-    endif
+Inbound mail is scanned with SpamAssassin. Exim files messages tagged
+X-SA-Status: Yes into the user's existing Junk/Spam folder (Junk is created
+if none). Tag at 3.0; reject at 7.0.
+Junk/Spam and Trash/Bin older than 30 days are deleted.
 
 
 # DKIM/DMARC

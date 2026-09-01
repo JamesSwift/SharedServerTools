@@ -105,7 +105,7 @@ echo "Done"
 echo
 
 echo "Setting up Exim4 (split config):"
-mkdir -p "${SST_EXIM_VIRTUAL}" "${SST_EXIM_DKIM}" /etc/exim4/conf.d/main /etc/exim4/conf.d/acl /etc/exim4/conf.d/router /etc/exim4/conf.d/auth
+mkdir -p "${SST_EXIM_VIRTUAL}" "${SST_EXIM_DKIM}" /etc/exim4/conf.d/main /etc/exim4/conf.d/acl /etc/exim4/conf.d/router /etc/exim4/conf.d/transport /etc/exim4/conf.d/auth
 chown root:Debian-exim "${SST_EXIM_DKIM}" "${SST_EXIM_VIRTUAL}"
 chmod 750 "${SST_EXIM_DKIM}" "${SST_EXIM_VIRTUAL}"
 
@@ -114,6 +114,8 @@ sst_ensure_virtual_domain "${HOSTNAME_FULL}"
 apply_template /etc/exim4/check_data_acl check_data_acl
 apply_template /etc/exim4/conf.d/acl/01_acl_check_sender 01_acl_check_sender
 apply_template /etc/exim4/conf.d/router/350_exim4-config_vdom_aliases 350_exim4-config_vdom_aliases
+apply_template /etc/exim4/conf.d/router/550_exim4-config_sa_junk 550_exim4-config_sa_junk
+apply_template /etc/exim4/conf.d/transport/30_exim4-config_maildir_junk 30_exim4-config_maildir_junk
 apply_template /etc/exim4/conf.d/auth/40_dovecot 40_dovecot
 apply_template /etc/exim4/update-exim4.conf.conf update-exim4.conf.conf
 apply_template /etc/exim4/conf.d/main/00_local_macros 00_local_macros
@@ -142,10 +144,14 @@ if [[ -d "/etc/letsencrypt/live/${HOSTNAME_FULL}" ]]; then
 	chmod g+s "/etc/letsencrypt/live/${HOSTNAME_FULL}"
 fi
 
-mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+mkdir -p /etc/letsencrypt/renewal-hooks/deploy /etc/cron.daily
 cp "${SCRIPT_DIR}/config-templates/letsencrypt-mail-permissions.sh" \
 	/etc/letsencrypt/renewal-hooks/deploy/sharedservertools-mail.sh
 chmod 755 /etc/letsencrypt/renewal-hooks/deploy/sharedservertools-mail.sh
+apply_template /etc/cron.daily/sst-expire-junk sst-expire-junk
+chmod 755 /etc/cron.daily/sst-expire-junk
+# Replaces the previous filename so re-runs do not stack two daily jobs.
+rm -f /etc/cron.daily/sharedservertools-expire-junk
 
 if [[ -f /etc/fail2ban/jail.local ]]; then
 	if ! grep -q '^\[exim\]' /etc/fail2ban/jail.local; then
