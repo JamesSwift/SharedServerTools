@@ -1,15 +1,13 @@
 #!/bin/bash
-# Read-only inventory for a 20.04 (or later) host that grew on top of SharedServerTools.
-# Run on the live box before do-release-upgrade. Does not change config.
-# Some files are mode 770 root:Debian-exim; use sudo to see DKIM/virtual lists.
+# Read-only inventory of this machine's mail config.
 
 set -u
 
 . "$(dirname "$(realpath "$0")")/sst-lib.sh"
 sst_init_vars
 
-echo "SharedServerTools mail upgrade audit"
-echo "===================================="
+echo "SharedServerTools mail inventory"
+echo "================================"
 echo "Date: $(date -Is)"
 echo "Host: ${HOSTNAME_FULL} (${HOSTNAME_SHORT})"
 echo "Primary IP (first hostname -I): ${PRIMARY_IP}"
@@ -68,13 +66,12 @@ else
 fi
 echo
 
-echo "-- tainted-path patterns in Exim conf (20.04 SST style; will fail on 4.94+) --"
-# Matches expansions that splice $domain / $local_part / header-derived domain into a path.
-taint_hits=0
+echo "-- Exim paths that splice \$domain / \$local_part (Exim 4.94+ will reject these) --"
+hits=0
 if [[ -d /etc/exim4 ]]; then
 	while IFS= read -r line; do
 		echo "  $line"
-		taint_hits=$((taint_hits + 1))
+		hits=$((hits + 1))
 	done < <(grep -RIn --exclude='*.backup' \
 		-e '/virtual/\$domain[^_]' \
 		-e '/dkim/\${' \
@@ -83,32 +80,32 @@ if [[ -d /etc/exim4 ]]; then
 		-e 'lsearch{/etc/exim4/virtual/\$domain}' \
 		/etc/exim4 2>/dev/null || true)
 fi
-if [[ "$taint_hits" -eq 0 ]]; then
-	echo "  (none of the old SST path patterns matched; still grep your own routers)"
+if [[ "$hits" -eq 0 ]]; then
+	echo "  (none matched)"
 fi
 echo
 
-echo "-- Dovecot 2.3 leftovers (will not parse on 2.4) --"
+echo "-- Dovecot settings --"
 for f in /etc/dovecot/conf.d/10-ssl.conf /etc/dovecot/conf.d/10-mail.conf \
 	/etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-auth.conf; do
 	if [[ -f "$f" ]]; then
-		hits=$(grep -E '^\s*(mail_location|ssl_cert|ssl_key|ssl_dh|disable_plaintext_auth)\s*=' "$f" 2>/dev/null || true)
-		if [[ -n "$hits" ]]; then
+		old=$(grep -E '^\s*(mail_location|ssl_cert|ssl_key|ssl_dh|disable_plaintext_auth)\s*=' "$f" 2>/dev/null || true)
+		if [[ -n "$old" ]]; then
 			echo "$f:"
-			echo "$hits" | sed 's/^/  /'
+			echo "$old" | sed 's/^/  /'
 		else
-			echo "$f: present, no classic 2.3 keys on active lines"
+			echo "$f: present"
 		fi
 	else
 		echo "$f: missing"
 	fi
 done
 if [[ -f /etc/dovecot/conf.d/99-sharedservertools.conf ]]; then
-	echo "99-sharedservertools.conf: already installed"
+	echo "99-sharedservertools.conf: installed"
 fi
 echo
 
-echo "-- files 20.04 SST used to replace (diff these by hand) --"
+echo "-- mail-related files --"
 for f in \
 	/etc/exim4/conf.d/main/00_local_macros \
 	/etc/exim4/conf.d/acl/01_acl_check_sender \
@@ -129,7 +126,7 @@ do
 done
 echo
 
-echo "-- extra Exim conf.d files (not Debian exim4-config* and not SST names; likely local) --"
+echo "-- extra Exim conf.d files --"
 if [[ -d /etc/exim4/conf.d ]]; then
 	found=0
 	while read -r f; do
@@ -150,5 +147,3 @@ if [[ -d /etc/exim4/conf.d ]]; then
 	fi
 fi
 echo
-
-echo "See docs/upgrade-from-ubuntu-20.04.md for the merge list and procedure."

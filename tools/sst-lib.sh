@@ -1,17 +1,5 @@
 #!/bin/bash
-# Shared helpers for SharedServerTools scripts. Source this file; do not execute it.
-#
-# Isolation model (everyone on the box is trusted, but groups should not
-# casually read each other's files):
-#   - One Unix user per owner-group (a person/business), NOT per domain.
-#     That user can own many websites and many mail aliases.
-#   - PHP-FPM pool and ~/www/<domain>/ for all of that group's sites run
-#     as that user. Mail for the group is ~/Maildir (mode 0700).
-#   - Virtual domains are alias files that redirect to user@localhost.
-#   - Isolation is between different Unix users, not between two domains
-#     owned by the same user. nginx is in the user's group (0750 home).
-
-# Override these before sourcing if you ever relocate Debian's layout.
+# Shared helpers. Source this file; do not execute it.
 : "${SST_EXIM_VIRTUAL:=/etc/exim4/virtual}"
 : "${SST_EXIM_DKIM:=/etc/exim4/dkim}"
 : "${SST_NGINX_AVAILABLE:=/etc/nginx/sites-available}"
@@ -39,7 +27,7 @@ sst_primary_ip() {
 	hostname -I 2>/dev/null | awk '{print $1}'
 }
 
-# Ubuntu 26.04 LTS default is PHP 8.5; detect whatever php-fpm is actually installed.
+# Installed php-fpm version (fallback 8.5).
 sst_detect_php_version() {
 	local version=""
 	if [[ -n "${SST_PHP_VERSION:-}" ]]; then
@@ -74,7 +62,7 @@ sst_php_default_sock() {
 	echo "/run/php/php$(sst_detect_php_version)-fpm.sock"
 }
 
-# Existing groups only: Ubuntu 26.04 no longer has floppy, and may not have lxd.
+# Skip groups that do not exist on this install.
 sst_add_admin_groups() {
 	local username=$1
 	local group
@@ -85,7 +73,7 @@ sst_add_admin_groups() {
 	done
 }
 
-# Owner-group accounts: letters, digits, _ and - only. Not system/mail daemons.
+# Letters, digits, _ and - only. Not system account names.
 sst_valid_site_user() {
 	local username=$1
 	[[ "$username" =~ ^[a-z_][a-z0-9_-]*$ ]] || return 1
@@ -95,18 +83,16 @@ sst_valid_site_user() {
 	return 0
 }
 
-# Owner-group account: private home (0750) so other Unix users cannot browse
-# this group's ~/www or ~/Maildir. nginx is later added to this user's group.
+# Create the account if needed; home mode 0750.
 sst_ensure_site_user() {
 	local username=$1
 	if ! sst_valid_site_user "$username"; then
-		sst_die "Refusing username '${username}'. Use a simple name like 'james' (not root/www-data)."
+		sst_die "Refusing username '${username}'. Use a simple name like 'alice' (not root/www-data)."
 	fi
 	if ! getent passwd "$username" >/dev/null; then
 		echo "Creating system user '${username}' (home will be mode 0750)."
 		adduser "$username" || sst_die "adduser ${username} failed."
 	fi
-	# Existing accounts too: other owner-groups should not browse this home.
 	if [[ -d "/home/${username}" ]]; then
 		chmod 0750 "/home/${username}" || true
 	fi
@@ -223,7 +209,7 @@ sst_ensure_dkim() {
 
 	mkdir -p "${SST_EXIM_DKIM}/${domain}"
 
-	# Pre-Aug-2020 SST used flat /etc/exim4/dkim/<domain>.private files.
+	# If a leftover <domain>.private sits next to <domain>/, move it in.
 	if [[ -f "${SST_EXIM_DKIM}/${domain}.private" ]] && [[ ! -f "${SST_EXIM_DKIM}/${domain}/dkim.private" ]]; then
 		echo "Migrating flat DKIM key ${SST_EXIM_DKIM}/${domain}.private into ${domain}/dkim.private"
 		cp -a "${SST_EXIM_DKIM}/${domain}.private" "${SST_EXIM_DKIM}/${domain}/dkim.private"
@@ -248,7 +234,6 @@ sst_ensure_dkim() {
 		echo "Please add the following entries to your DNS record for ${domain}"
 	fi
 
-	# root:Debian-exim, not world-readable. Site users are not in Debian-exim.
 	chown -R root:Debian-exim "${SST_EXIM_DKIM}/${domain}"
 	chmod 750 "${SST_EXIM_DKIM}" "${SST_EXIM_DKIM}/${domain}"
 	chmod 640 "${SST_EXIM_DKIM}/${domain}/dkim.private"

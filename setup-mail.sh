@@ -1,7 +1,6 @@
 #!/bin/bash
-# Install and configure Exim4 + Dovecot + SpamAssassin for Ubuntu 26.04 LTS.
-# Safe to re-run. Called from initial-setup.sh after the hostname SSL cert exists,
-# or on its own to turn mail back on for an existing web server.
+# Install Exim4, Dovecot, and SpamAssassin. Safe to re-run.
+# Called from initial-setup.sh after the hostname SSL cert exists.
 
 set -euo pipefail
 
@@ -17,36 +16,19 @@ echo "===================="
 echo "Mail server (Exim4)"
 echo "===================="
 echo
-echo "This configures Ubuntu's split Exim4 config (/etc/exim4/conf.d + update-exim4.conf),"
-echo "Dovecot 2.4 IMAP/POP3, and SpamAssassin (spamd)."
-echo
-echo "Mail is stored per owner-group Unix user (~/Maildir), not a shared vmail"
-echo "account and not one Unix user per domain. Exim and Dovecot stay as the usual"
-echo "shared daemons — enough isolation for a trusted-admin box."
-echo
-echo "Target: Ubuntu 26.04 LTS, Exim 4.99, Dovecot 2.4, PHP ${PHP_VERSION}."
+echo "This installs Exim4, Dovecot (IMAP/POP3), and SpamAssassin."
 echo "This host reports Ubuntu ${OS_ID}."
-echo "From-version for existing SST mail boxes is Ubuntu 20.04 (Exim 4.93, Dovecot 2.3, PHP 7.4)."
-echo "Read docs/upgrade-from-ubuntu-20.04.md before overwriting a drifted host."
 echo
 
-if [[ "$OS_ID" == "20.04" ]]; then
-	echo "Refusing to install the 26.04 mail templates on Ubuntu 20.04."
-	echo "The live 20.04 stack still works because Exim 4.93 does not reject tainted"
-	echo "path expansions. Running this script here would replace working files with"
-	echo "Dovecot 2.4 settings that this release cannot parse."
-	echo
-	echo "On this box run:  sudo ${SCRIPT_DIR}/tools/audit-mail-upgrade.sh"
-	echo "Then upgrade Ubuntu to 26.04 and re-run setup-mail.sh."
+if [[ "$OS_ID" == "20.04" || "$OS_ID" == "18.04" ]]; then
+	echo "ERROR: This script requires Ubuntu 26.04 (this host reports ${OS_ID})."
 	exit 1
 fi
 
-if [[ "$OS_ID" == "22.04" || "$OS_ID" == "24.04" ]]; then
-	echo "WARNING: Ubuntu ${OS_ID} can load the taint-safe Exim snippets, but Dovecot is"
-	echo "still 2.3. The 99-sharedservertools.conf drop-in is Dovecot 2.4 syntax and"
-	echo "will not start imap/pop3 on this release. Prefer finishing the upgrade to 26.04."
+if [[ "$OS_ID" != "26.04" ]]; then
+	echo "WARNING: Mail config is written for Ubuntu 26.04. Dovecot on ${OS_ID} may not start."
 	echo
-	read -p "Install Exim snippets anyway (Dovecot drop-in will still be written)? [y/N]" -n 1 -r
+	read -p "Continue anyway? [y/N]" -n 1 -r
 	echo
 	if ! [[ $REPLY =~ ^[Yy]$ ]]; then
 		echo "Canceled."
@@ -56,8 +38,8 @@ fi
 
 DOVECOT_VER=$(sst_dovecot_major_minor)
 if [[ -n "$DOVECOT_VER" && "$DOVECOT_VER" == 2.3* ]]; then
-	echo "Installed Dovecot ${DOVECOT_VER}: after this script, check that 10-ssl.conf /"
-	echo "10-mail.conf do not still use mail_location or ssl_cert = <  (2.3 SST copies)."
+	echo "Installed Dovecot ${DOVECOT_VER}: if IMAP fails to start, check 10-ssl.conf / 10-mail.conf"
+	echo "for old setting names (mail_location, ssl_cert = <)."
 	echo
 fi
 
@@ -99,16 +81,14 @@ apt-get install -y exim4-daemon-heavy dovecot-imapd dovecot-pop3d dovecot-sieve 
 
 echo
 echo "Setting up Dovecot:"
-# 20.04 SST replaced 10-*.conf with 2.3 syntax. 26.04 Dovecot will not start if those remain.
 for f in /etc/dovecot/conf.d/10-ssl.conf /etc/dovecot/conf.d/10-mail.conf \
 	/etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-auth.conf; do
 	if [[ -f "$f" ]] && grep -qE '^\s*(mail_location|ssl_cert|ssl_key)\s*=' "$f"; then
-		echo "NOTE: $f still has Dovecot 2.3 settings. After 26.04, move it aside and"
-		echo "      use the distro file plus 99-sharedservertools.conf. See docs/upgrade-from-ubuntu-20.04.md"
+		echo "NOTE: $f still has old Dovecot settings. IMAP may not start until you use the"
+		echo "      distro file plus 99-sharedservertools.conf."
 	fi
 done
 apply_template /etc/dovecot/conf.d/99-sharedservertools.conf 99-sharedservertools-dovecot.conf
-# Do not replace Ubuntu's 2.4 10-*.conf files; only the drop-in above is ours.
 chmod 644 /var/www 2>/dev/null || true
 echo "Done"
 echo
@@ -141,9 +121,6 @@ apply_template /etc/exim4/conf.d/router/350_exim4-config_vdom_aliases 350_exim4-
 apply_template /etc/exim4/conf.d/auth/40_dovecot 40_dovecot
 apply_template /etc/exim4/update-exim4.conf.conf update-exim4.conf.conf
 apply_template /etc/exim4/conf.d/main/00_local_macros 00_local_macros
-
-# DKIM signing uses Debian's stock remote_smtp transport (DKIM_* macros).
-# Do not replace 30_exim4-config_remote_smtp_smarthost; internet sites use remote_smtp.
 
 update-exim4.conf
 echo "Done"
@@ -207,12 +184,11 @@ sst_ensure_dkim "${HOSTNAME_FULL}" "${HOSTNAME_SHORT}"
 
 echo "Mail setup is complete."
 echo
-echo "IMAP/POP3: Dovecot on 993/995 (TLS required), Unix user accounts (one user per owner-group)."
+echo "IMAP/POP3: Dovecot on 993/995 (TLS required)."
 echo "SMTP submission: Exim on 587 (STARTTLS) and 465 (implicit TLS)."
 echo "Virtual aliases: /etc/exim4/virtual/<domain>  (see add-email-domain.sh)"
 echo
 echo "To add another mail domain without a website, run add-email-domain.sh"
 echo
 echo "Replaced files were copied to ${SST_BACKUP_DIR} (and to *.backup beside each file)."
-echo "Merge any local 20.04 tweaks from that backup; do not restore tainted \$domain paths."
 echo

@@ -34,10 +34,10 @@ done
 echo "OK   Dovecot 2.4 drop-in setting names"
 
 echo
-echo "== templates: Exim taint-safe lookups =="
+echo "== templates: Exim dsearch lookups =="
 if grep -E 'virtual/\$domain[^-_]' "$ROOT"/config-templates/350_exim4-config_vdom_aliases \
 	|| grep -E 'virtual/\$domain"' "$ROOT"/config-templates/350_exim4-config_vdom_aliases; then
-	echo "FAIL: router still uses tainted \$domain in a path"
+	echo "FAIL: router still uses \$domain in a path"
 	fail=1
 fi
 if ! grep -q 'dsearch' "$ROOT"/config-templates/350_exim4-config_vdom_aliases; then
@@ -55,7 +55,7 @@ fi
 echo "OK   Exim templates use dsearch / \$domain_data"
 
 echo
-echo "== templates: Maildir isolation modes =="
+echo "== templates: Maildir modes =="
 if ! grep -q 'MAILDIR_HOME_DIRECTORY_MODE = 0700' "$ROOT"/config-templates/00_local_macros; then
 	echo "FAIL: Maildir directory mode should be 0700"
 	fail=1

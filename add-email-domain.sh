@@ -14,10 +14,7 @@ if ! sst_mail_enabled; then
 	sst_die "Mail is not configured yet. Run ${SCRIPT_DIR}/setup-mail.sh first (or initial-setup.sh and enable mail)."
 fi
 
-echo "This adds a domain to Exim (virtual aliases + DKIM)."
-echo "Pick the Unix user who already owns this person's sites (or will)."
-echo "All of that group's domains and mail aliases land in that user's ~/Maildir."
-echo "If you already added this domain, run this again to reprint DNS records."
+echo "This script lets you easily add a new domain to exim. If you have already added a domain, you can see the DKIM settings for it by running this script again."
 echo
 echo "Please enter the domain name (excluding www):"
 read -r domain
@@ -28,8 +25,8 @@ if [[ -z "$domain" ]]; then
 fi
 
 echo
-echo "Which local Unix user owns this group (sites + mail)?"
-echo "Reuse the same user for several domains. IMAP login = that user."
+echo "Which local user should receive mail for this domain?"
+echo "Reuse an existing system user if this domain belongs with their other sites."
 echo "(Leave blank only if you will edit ${SST_EXIM_VIRTUAL}/${domain} yourself.)"
 read -r mail_user
 
@@ -38,7 +35,7 @@ if [[ -n "$mail_user" ]]; then
 		sst_die "User '${mail_user}' does not exist. Create them with add-website.sh or adduser first."
 	fi
 	if ! sst_valid_site_user "$mail_user"; then
-		echo "WARNING: '${mail_user}' is a special/system name. Continuing, but prefer an owner-group account."
+		echo "WARNING: '${mail_user}' looks like a system account name."
 	fi
 	if [[ -d "/home/${mail_user}" ]]; then
 		chmod 0750 "/home/${mail_user}" || true
@@ -51,11 +48,10 @@ sst_ensure_virtual_domain "$domain" "${mail_user:-}"
 echo
 echo "Alias file: ${SST_EXIM_VIRTUAL}/${domain}"
 if [[ -n "$mail_user" ]]; then
-	echo "postmaster@${domain} -> ${mail_user}@localhost  (~${mail_user}/Maildir)"
-	echo "Same Unix user can own other domains too. Add more mailboxes/aliases:"
-	echo "  info : ${mail_user}@localhost"
+	echo "postmaster@${domain} -> ${mail_user}@localhost"
+	echo "Add extra addresses like:  info : ${mail_user}@localhost"
 else
-	echo "The file is empty. Example to deliver to local user james:"
-	echo "  info : james@localhost"
+	echo "The file is empty. Example to deliver to a local user:"
+	echo "  info : user@localhost"
 fi
 echo

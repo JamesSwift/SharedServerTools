@@ -19,8 +19,6 @@ echo
 echo "This script is designed to turn a clean Ubuntu 26.04 LTS installation into a working, secured, multi-domain web server, with optional Exim/Dovecot mail."
 echo "Ideally this script should be run as the very first thing you do with your new install. It will alter config files with no regard for their current state."
 echo
-echo "If this host is an existing Ubuntu 20.04 SharedServerTools box (mail still working, local tweaks), do not treat this as an in-place upgrade. See docs/upgrade-from-ubuntu-20.04.md and run tools/audit-mail-upgrade.sh first."
-echo
 echo "The process is quite simple, but you will need to answer some questions first:"
 echo
 echo
@@ -192,7 +190,7 @@ echo
 echo "The script will now install the software needed for the server's operation from apt. Namely:"
 echo "- git"
 echo "- nginx"
-echo "- php-fpm (Ubuntu 26.04 default is PHP ${PHP_VERSION})"
+echo "- php-fpm"
 echo "- mariadb-server"
 echo "- fail2ban"
 echo "- certbot"
@@ -317,8 +315,7 @@ echo "===="
 echo "Mail"
 echo "===="
 echo
-echo "Exim4 (MTA), Dovecot (IMAP/POP3), and SpamAssassin can be installed next."
-echo "This uses Ubuntu's split Exim config and is written for Ubuntu 26.04 LTS / Exim 4.99."
+echo "Exim4, Dovecot, and SpamAssassin can be installed next."
 echo "You can also run ./setup-mail.sh later if you skip this now."
 echo
 read -p "Would you like to set up email on this server now? [Y/n]" -n 1 -r
@@ -344,8 +341,7 @@ echo "Single-Site Server"
 echo "  If this server will host only one domain, you can store your files in /var/www/html"
 echo
 echo "Multi-Site Server"
-echo "  Run add-website.sh for each domain. Reuse the same Unix user when several"
-echo "  sites belong to the same person; use a different user for a different owner."
+echo "  If you plan to host multiple websites, from multiple users, run the add-website.sh file for each domain."
 echo
 echo
 echo "You can re-run this setup file at any time to alter your configuration."
