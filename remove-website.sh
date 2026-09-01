@@ -1,10 +1,8 @@
 #!/bin/bash
 
-#First, check we are root
-if [[ $EUID -ne 0 ]]; then
-  echo "This script must be run as root." 2>&1
-  exit 1
-fi
+. "$(dirname "$(realpath "$0")")/tools/sst-lib.sh"
+sst_require_root
+sst_init_vars
 
 echo "Enter the domain of the website you wish to delete (excluding www):"
 read domain
@@ -51,8 +49,8 @@ if [[ $REPLY =~ ^[Yy]$ ]]
 then
 
 
-	rm /etc/php/8.1/fpm/pool.d/${username}.conf
-	service php8.1-fpm restart
+	rm "$(sst_php_fpm_pool_dir)/${username}.conf"
+	service "$(sst_php_fpm_service)" restart
 	deluser www-data $username
 	deluser $username
 	rm -rf /home/$username

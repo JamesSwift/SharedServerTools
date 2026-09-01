@@ -1,16 +1,8 @@
 #!/bin/bash
 
-#First, check we are root
-if [[ $EUID -ne 0 ]]; then
-  echo "This script must be run as root." 2>&1
-  exit 1
-fi
-
-#vars
-SCRIPT_PATH=`realpath $0`
-SCRIPT_DIR=`dirname $SCRIPT_PATH`
-PRIMARY_IP=`hostname -I`
-PRIMARY_IP="${PRIMARY_IP%% }"
+. "$(dirname "$(realpath "$0")")/tools/sst-lib.sh"
+sst_require_root
+sst_init_vars
 
 
 echo "==========================="
@@ -82,7 +74,7 @@ then
 		sed -i "s/__USERNAME__/${username}/g" /etc/nginx/sites-available/${domain}
 		sed -i "s#__DOC_ROOT__#${DOC_ROOT}#g" /etc/nginx/sites-available/${domain}
 		sed -i "s/__DOMAIN__/${domain}/g" /etc/nginx/sites-available/${domain}
-		service php8.1-fpm reload
+		service "$(sst_php_fpm_service)" reload
 	fi
 	echo
 else
@@ -158,13 +150,13 @@ else
 	ln -s /etc/nginx/sites-available/${domain} /etc/nginx/sites-enabled/${domain}
 
 
-	echo "Creating php-fpm pool config file in /etc/php/8.1/pfm/pool.d/${username}.conf"
-	cp ${SCRIPT_DIR}/templates/fpm-pool.template /etc/php/8.1/fpm/pool.d/${username}.conf
-	sed -i "s/__USERNAME__/${username}/g" /etc/php/8.1/fpm/pool.d/${username}.conf
+	echo "Creating php-fpm pool config file in $(sst_php_fpm_pool_dir)/${username}.conf"
+	cp ${SCRIPT_DIR}/templates/fpm-pool.template "$(sst_php_fpm_pool_dir)/${username}.conf"
+	sed -i "s/__USERNAME__/${username}/g" "$(sst_php_fpm_pool_dir)/${username}.conf"
 
 
 	echo "Reloading php-fpm configuration:"
-	service php8.1-fpm reload
+	service "$(sst_php_fpm_service)" reload
 	echo "Reloading nginx configuration:"
 	service nginx reload
 
@@ -201,6 +193,25 @@ else
 
 	echo "Reloading nginx:"
 	service nginx reload
+fi
+
+
+if sst_mail_enabled; then
+	echo
+	sst_ensure_dkim "$domain"
+	sst_ensure_virtual_domain "$domain" "$username"
+
+	echo
+	echo "To setup routing from addresses at this domain to local users edit the file: /etc/exim4/virtual/${domain}"
+	echo
+	echo "For example to send info@${domain} to local user ${username} add the following:"
+	echo
+	echo "info : ${username}@localhost"
+	echo
+else
+	echo
+	echo "Mail is not enabled on this server. Run ./setup-mail.sh to turn Exim/Dovecot on, then ./add-email-domain.sh for this domain."
+	echo
 fi
 
 

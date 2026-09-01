@@ -1,0 +1,21 @@
+# Virtual-domain aliases. Matches the Exim 4.99 recommended form
+# (spec chapter 51): dsearch de-taints $domain into $domain_data, then
+# lsearch uses that filesystem name as the alias file path.
+#
+# Alias file format (one per domain):
+#   info : james@localhost
+#   *    : catchall@localhost
+#
+# no_more is intentionally unset so addresses that are not in the file
+# can still fall through to local_user when the virtual file is for the
+# server hostname.
+
+vdom_aliases:
+      driver = redirect
+      allow_defer
+      allow_fail
+      domains = dsearch,filter=file;/etc/exim4/virtual
+      data = ${lookup{$local_part}lsearch*@{/etc/exim4/virtual/$domain_data}}
+      retry_use_local_part
+      pipe_transport   = address_pipe
+      file_transport   = address_file

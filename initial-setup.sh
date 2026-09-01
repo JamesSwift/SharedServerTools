@@ -1,65 +1,8 @@
 #!/bin/bash
 
-#First, check we are root
-if [[ $EUID -ne 0 ]]; then
-  echo "This script must be run as root." 2>&1
-  exit 1
-fi
-
-########################################################################
-# Helper functions
-
-replace_config_param(){
-	#args: file, key, new_value, (old_value to match against)
-
-	if [ -z "$1" ]
-	then
-		echo "-Parameter #1 is zero length.-"
-		return 1
-	fi
-		if [ -z "$2" ]
-	then
-				echo "-Parameter #2 is zero length.-"
-				return 1
-		fi
-
-	CONFIG_FILE=$1
-	TARGET_KEY=$2
-	REPLACEMENT_VALUE=$3
-	SEARCH_KEY=${4:-".*"}
-
-	if grep -q "^[ ^I]*$TARGET_KEY[ ^I]*" "$CONFIG_FILE"; then
-		sed -re 's/^('"$TARGET_KEY"')([[:space:]]+)'"$SEARCH_KEY"'/\1\2'"$REPLACEMENT_VALUE"'/' -i $CONFIG_FILE
-	else
-	   echo "$TARGET_KEY $REPLACEMENT_VALUE" >> "$CONFIG_FILE"
-	fi
-	return 0
-}
-
-#args: destination_file, config-templates file,
-apply_template(){
-	rm $1".backup" 2> /dev/null
-	cp ${SCRIPT_DIR}/config-templates/$2 $1"~"
-
-	#Apply sed filters for all known variables
-	sed -i "s/__HOSTNAME_FULL__/${HOSTNAME_FULL}/g" $1"~"
-	sed -i "s/__HOSTNAME_SHORT__/${HOSTNAME_SHORT}/g" $1"~"
-	sed -i "s/__PRIMARY_IP__/${PRIMARY_IP}/g" $1"~"
-
-	mv $1 $1".backup" 2> /dev/null
-	mv $1"~" $1
-	return 0;
-}
-
-
-#############################################################################
-# Variables used throughout
-
-SCRIPT_PATH=`realpath $0`
-SCRIPT_DIR=`dirname $SCRIPT_PATH`
-HOSTNAME_SHORT=`hostname`
-HOSTNAME_FULL=`hostname -f`
-PRIMARY_IP=`hostname -I`
+. "$(dirname "$(realpath "$0")")/tools/sst-lib.sh"
+sst_require_root
+sst_init_vars
 
 #clear
 
@@ -71,7 +14,7 @@ echo "================="
 echo "SharedServerTools"
 echo "================="
 echo
-echo "This script is designed to turn a clean ubuntu 22.04 installation into a working, secured, web, file, & mail server (with spam checking)."
+echo "This script is designed to turn a clean Ubuntu 26.04 LTS installation into a working, secured, multi-domain web server, with optional Exim/Dovecot mail."
 echo "Ideally this script should be run as the very first thing you do with your new install. It will alter config files with no regard for their current state."
 echo
 echo "The process is quite simple, but you will need to answer some questions first:"
@@ -141,7 +84,7 @@ then
 	read -p "Desired username:" new_username
 	adduser $new_username
 	echo
-	usermod -aG adm,dialout,cdrom,floppy,sudo,audio,dip,video,plugdev,netdev,lxd $new_username
+	sst_add_admin_groups "$new_username"
 	echo
 	echo
 fi
@@ -183,7 +126,7 @@ echo "==============="
 echo "It is important that the server (and this script) know the fully qualified domain name that refers to this server."
 echo "Here are the current settings:"
 echo
-echo "Current primary IP: "$PRIMARY_IP" (This should be a single ip address, if more listed please correct)"
+echo "Current primary IP: "$PRIMARY_IP" (first address from hostname -I; correct it if that is not the public address)"
 echo "Current full hostname: "$HOSTNAME_FULL
 echo "Current short hostname: "$HOSTNAME_SHORT
 echo
@@ -241,15 +184,21 @@ echo
 echo "The script will now install the software needed for the server's operation from apt. Namely:"
 echo "- git"
 echo "- nginx"
-echo "- php-fpm"
+echo "- php-fpm (Ubuntu 26.04 default is PHP ${PHP_VERSION})"
 echo "- mariadb-server"
 echo "- fail2ban"
 echo "- certbot"
 echo
+echo "Mail (Exim, Dovecot, SpamAssassin) is optional and offered after SSL is in place."
+echo
 read -p "Press enter to continue"
 echo 
 
-apt install -y git nginx php8.1-fpm php8.1-mysql mariadb-server fail2ban certbot
+apt install -y git nginx php-fpm php-mysql mariadb-server fail2ban certbot
+
+# Re-detect after packages are installed (metapackage php-fpm follows the distro default).
+PHP_VERSION=$(sst_detect_php_version)
+PHP_FPM_SOCK=$(sst_php_default_sock)
 
 ######################################################################################################
 # Configure software
@@ -266,8 +215,8 @@ echo "Done"
 echo
 echo
 echo "Setting up php:"
-apply_template /etc/php/8.1/fpm/conf.d/php.ini php.ini
-service php8.1-fpm restart
+apply_template "$(sst_php_fpm_conf_d)/99-sharedservertools.ini" php.ini
+service "$(sst_php_fpm_service)" restart
 echo "Done"
 echo
 echo
@@ -350,6 +299,28 @@ then
 fi
 
 
+########################################################################
+# Optional mail stack (after the hostname certificate exists)
+
+echo
+echo "===="
+echo "Mail"
+echo "===="
+echo
+echo "Exim4 (MTA), Dovecot (IMAP/POP3), and SpamAssassin can be installed next."
+echo "This uses Ubuntu's split Exim config and is written for Ubuntu 26.04 LTS / Exim 4.99."
+echo "You can also run ./setup-mail.sh later if you skip this now."
+echo
+read -p "Would you like to set up email on this server now? [Y/n]" -n 1 -r
+echo
+if ! [[ $REPLY =~ ^[Nn]$ ]]
+then
+	"${SCRIPT_DIR}/setup-mail.sh"
+else
+	echo "Skipping mail. Run ${SCRIPT_DIR}/setup-mail.sh when you are ready."
+fi
+
+
 echo
 echo "====================="
 echo "Installation complete"
@@ -367,5 +338,7 @@ echo "  If you plan to host multiple websites, from multiple users, run the add-
 echo
 echo
 echo "You can re-run this setup file at any time to alter your configuration."
+echo
+echo "If you enabled mail, add more domains with add-email-domain.sh (or add-website.sh)."
 echo
 echo "If your server came with the default 'ubuntu' user, don't forget you may wish to remove it or change it's password."

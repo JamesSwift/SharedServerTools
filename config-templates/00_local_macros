@@ -1,0 +1,48 @@
+# SharedServerTools local macros for Ubuntu 26.04 LTS Exim 4.99.
+# Loaded first in Debian/Ubuntu split config (/etc/exim4/conf.d/main/).
+#
+# Exim 4.94+ refuses to use SMTP-supplied values ($local_part, $domain,
+# header addresses, etc.) as file names. Those values are "tainted".
+# De-taint them with a lookup such as dsearch against a directory of
+# known files, then use $domain_data / $value (the filesystem name Exim
+# actually found) in paths. Do not splice $domain into a path.
+
+MAIN_TLS_ENABLE = yes
+MAIN_TLS_CERTIFICATE = /etc/letsencrypt/live/__HOSTNAME_FULL__/fullchain.pem
+MAIN_TLS_PRIVATEKEY = /etc/letsencrypt/live/__HOSTNAME_FULL__/privkey.pem
+
+# Virtual domains are files in /etc/exim4/virtual/. dsearch both lists
+# them as local domains and places an untainted name in $domain_data.
+MAIN_LOCAL_DOMAINS = @:localhost:dsearch;/etc/exim4/virtual
+
+DKIM_CANON = relaxed
+DKIM_SELECTOR = __HOSTNAME_SHORT__
+
+# Sign with the From: domain when a matching key directory exists.
+# dsearch returns the directory entry Exim found (untainted).
+DKIM_DOMAIN = ${lookup {${lc:${domain:${address:$h_from:}}}} dsearch,filter=dir {/etc/exim4/dkim}}
+
+DKIM_PRIVATE_KEY = ${lookup {${lc:${domain:${address:$h_from:}}}} dsearch,filter=dir,ret=full {/etc/exim4/dkim} {$value/dkim.private}{}}
+
+# 25: SMTP with STARTTLS. 587: submission with STARTTLS. 465: implicit TLS.
+# Do not put 587 on tls_on_connect_ports (that is SMTPS on 465 only).
+daemon_smtp_ports = 25 : 465 : 587
+tls_on_connect_ports = 465
+
+# Advertise AUTH only on encrypted connections.
+auth_advertise_hosts = ${if eq{$tls_in_cipher}{}{}{*}}
+
+spamd_address = 127.0.0.1 783
+
+CHECK_DATA_LOCAL_ACL_FILE = /etc/exim4/check_data_acl
+
+MESSAGE_SIZE_LIMIT = 100M
+IGNORE_SMTP_LINE_LENGTH_LIMIT = 1
+
+# php-fpm / website users inject mail via /usr/sbin/sendmail. Leave
+# MAIN_FORCE_SENDER unset so Debian's untrusted_set_sender=* applies.
+# SMTP AUTH submissions are still restricted by acl_check_sender.
+MAIN_TRUSTED_GROUPS = sudo
+
+# Create ~/Maildir on first delivery if it does not exist.
+MAILDIR_HOME_CREATE_DIRECTORY = 1
