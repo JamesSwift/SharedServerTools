@@ -3,7 +3,15 @@
 
 set -u
 
-. "$(dirname "$(realpath "$0")")/sst-lib.sh"
+_sst_here=$(dirname "$(realpath "$0")")
+if [[ -f "${_sst_here}/sst-lib.sh" ]]; then
+	. "${_sst_here}/sst-lib.sh"
+elif [[ -f "${_sst_here}/tools/sst-lib.sh" ]]; then
+	. "${_sst_here}/tools/sst-lib.sh"
+else
+	echo "ERROR: cannot find sst-lib.sh (run this as ./tools/audit-mail.sh from the repo)." >&2
+	exit 1
+fi
 sst_init_vars
 
 echo "SharedServerTools mail inventory"

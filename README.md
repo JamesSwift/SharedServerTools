@@ -37,8 +37,7 @@ have changed I have changed the scripts without regard for other setups. If you 
 the latest git master it will likely result in problems when you try to modify existing 
 setups. Sorry.
 
-This version targets ubuntu 26.04. Re-running the setup scripts on a server you have already 
-customised can overwrite your config.
+This version targets ubuntu 26.04. Re-run initial-setup.sh, add-website.sh, and setup-mail.sh to apply the current templates; they overwrite those config files.
 
 
 # Email Addresses

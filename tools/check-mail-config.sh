@@ -105,6 +105,102 @@ else
 fi
 rm -rf "$site_tmp"
 
+echo
+echo "== audit-mail.sh finds sst-lib.sh =="
+if bash "$ROOT/tools/audit-mail.sh" >/dev/null; then
+	echo "OK   ./tools/audit-mail.sh runs from the repo"
+else
+	echo "FAIL: ./tools/audit-mail.sh exited non-zero"
+	fail=1
+fi
+audit_copy=$(mktemp -d)
+cp "$ROOT/tools/audit-mail.sh" "$audit_copy/audit-mail.sh"
+audit_err=$(mktemp)
+if bash "$audit_copy/audit-mail.sh" >/dev/null 2>"$audit_err"; then
+	echo "FAIL: audit-mail.sh without sst-lib.sh should exit"
+	fail=1
+elif grep -q 'sst-lib.sh' "$audit_err" && ! grep -q 'sst_init_vars: command not found' "$audit_err"; then
+	echo "OK   missing sst-lib.sh is a clear error (not sst_init_vars)"
+else
+	echo "FAIL: expected a sst-lib.sh error, got:"
+	sed 's/^/  /' "$audit_err"
+	fail=1
+fi
+rm -rf "$audit_copy" "$audit_err"
+
+echo
+echo "== add-website refreshes the current php-fpm pool on existing sites =="
+pool_calls=$(grep -c 'sst_install_php_fpm_pool' "$ROOT"/add-website.sh || true)
+if [[ "$pool_calls" -ge 2 ]]; then
+	echo "OK   existing-site path rewrites the php-fpm pool"
+else
+	echo "FAIL: existing-site branch must call sst_install_php_fpm_pool"
+	fail=1
+fi
+if grep -q 'sst_php_fpm_pool_dir' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'sst_install_php_fpm_pool' "$ROOT"/add-website.sh; then
+	echo "OK   pool path comes from sst_php_fpm_pool_dir (installed php-fpm)"
+else
+	echo "FAIL: php-fpm pool must use sst_php_fpm_pool_dir, not a hardcoded 8.1/7.4 path"
+	fail=1
+fi
+if grep -E 'php[0-9]+\.[0-9]+/fpm/pool' "$ROOT"/add-website.sh "$ROOT"/remove-website.sh; then
+	echo "FAIL: website scripts still hardcode a php-fpm pool path"
+	fail=1
+else
+	echo "OK   no hardcoded phpX.Y pool paths in add/remove-website"
+fi
+
+echo
+echo "== setup-mail: 26.04 Dovecot 2.3 leftovers / 20.04 refuse / internet mode =="
+if grep -q '20.04' "$ROOT"/setup-mail.sh && grep -q 'exit 1' "$ROOT"/setup-mail.sh; then
+	echo "OK   setup-mail still refuses Ubuntu 20.04"
+else
+	echo "FAIL: setup-mail.sh must refuse to run on 20.04"
+	fail=1
+fi
+if grep -q 'sst_quarantine_dovecot_23_files' "$ROOT"/setup-mail.sh; then
+	echo "OK   setup-mail quarantines Dovecot 2.3 10-*.conf on 2.4"
+else
+	echo "FAIL: setup-mail.sh must move old Dovecot 2.3 10-*.conf aside"
+	fail=1
+fi
+if grep -q "dc_eximconfig_configtype='internet'" "$ROOT"/config-templates/update-exim4.conf.conf \
+	&& grep -q "dc_smarthost=''" "$ROOT"/config-templates/update-exim4.conf.conf; then
+	echo "OK   Exim template is internet mode (no smarthost)"
+else
+	echo "FAIL: Exim must stay internet mode, not smarthost"
+	fail=1
+fi
+
+dov_tmp=$(mktemp -d)
+printf '%s\n' 'mail_location = maildir:~/Maildir' > "$dov_tmp/10-mail.conf"
+printf '%s\n' '# distro 2.4 mail' > "$dov_tmp/10-mail.conf.dpkg-dist"
+printf '%s\n' 'ssl_cert = </etc/dovecot/private/dovecot.pem' > "$dov_tmp/10-ssl.conf"
+printf '%s\n' 'mail_path = ~/Maildir' > "$dov_tmp/10-auth.conf"
+SST_DOVECOT_CONF_D=$dov_tmp
+sst_quarantine_dovecot_23_files
+if [[ -f "$dov_tmp/10-mail.conf" ]] && grep -q 'distro 2.4 mail' "$dov_tmp/10-mail.conf" \
+	&& ls "$dov_tmp"/10-mail.conf.sst-pre24-* >/dev/null 2>&1 \
+	&& ls "$dov_tmp"/10-ssl.conf.sst-pre24-* >/dev/null 2>&1 \
+	&& [[ ! -f "$dov_tmp/10-ssl.conf" ]] \
+	&& [[ -f "$dov_tmp/10-auth.conf" ]]; then
+	echo "OK   sst_quarantine_dovecot_23_files moves 2.3 files and restores dpkg-dist"
+else
+	echo "FAIL: Dovecot 2.3 quarantine behaviour"
+	ls -la "$dov_tmp"
+	fail=1
+fi
+rm -rf "$dov_tmp"
+unset SST_DOVECOT_CONF_D || true
+
+if grep -q 'initial-setup.sh, add-website.sh, and setup-mail.sh' "$ROOT"/README.md; then
+	echo "OK   README Upgrading names the scripts to re-run"
+else
+	echo "FAIL: README Upgrading should say to re-run initial-setup.sh / add-website.sh / setup-mail.sh"
+	fail=1
+fi
+
 if [[ $EUID -eq 0 ]] && getent passwd www-data >/dev/null && command -v userdel >/dev/null; then
 	live_u=ssttmpusr
 	userdel -r "$live_u" >/dev/null 2>&1 || true

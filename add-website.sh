@@ -67,8 +67,9 @@ if [[ -f "${SST_NGINX_AVAILABLE}/${domain}" ]]; then
 		sed -i "s/__USERNAME__/${username}/g" "${SST_NGINX_AVAILABLE}/${domain}"
 		sed -i "s#__DOC_ROOT__#${DOC_ROOT}#g" "${SST_NGINX_AVAILABLE}/${domain}"
 		sed -i "s/__DOMAIN__/${domain}/g" "${SST_NGINX_AVAILABLE}/${domain}"
-		service "$(sst_php_fpm_service)" reload || sst_die "php-fpm reload failed."
 	fi
+	sst_install_php_fpm_pool "$username"
+	service "$(sst_php_fpm_service)" reload || sst_die "php-fpm reload failed."
 	echo
 else
 	echo "Which user should own this website (will be created if it doesn't exist)?"
@@ -128,9 +129,7 @@ else
 
 	ln -s "${SST_NGINX_AVAILABLE}/${domain}" "${SST_NGINX_ENABLED}/${domain}"
 
-	echo "Creating php-fpm pool config file in $(sst_php_fpm_pool_dir)/${username}.conf"
-	cp "${SCRIPT_DIR}/templates/fpm-pool.template" "$(sst_php_fpm_pool_dir)/${username}.conf"
-	sed -i "s/__USERNAME__/${username}/g" "$(sst_php_fpm_pool_dir)/${username}.conf"
+	sst_install_php_fpm_pool "$username"
 
 	echo "Reloading php-fpm configuration:"
 	service "$(sst_php_fpm_service)" reload || sst_die "php-fpm reload failed."
