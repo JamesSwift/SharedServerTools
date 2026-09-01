@@ -117,13 +117,17 @@ fi
 if [[ -f "$sa_transport" ]] && grep -q 'driver = appendfile' "$sa_transport" \
 	&& grep -q 'maildir_format' "$sa_transport" \
 	&& grep -q 'create_directory' "$sa_transport" \
-	&& grep -q 'directory = $home/Maildir/.Junk' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.Junk}' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.Spam}' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.my spam}' "$sa_transport" \
+	&& grep -q 'exists{$home/Maildir/.my junk}' "$sa_transport" \
 	&& grep -q 'MAILDIR_HOME_DIRECTORY_MODE' "$sa_transport" \
 	&& grep -q 'MAILDIR_HOME_MODE' "$sa_transport" \
-	&& grep -q 'mode_fail_narrower = false' "$sa_transport"; then
-	echo "OK   maildir_junk delivers to \$home/Maildir/.Junk"
+	&& grep -q 'mode_fail_narrower = false' "$sa_transport" \
+	&& ! grep -qE '^[[:space:]]*directory = \$home/Maildir/\.Junk[[:space:]]*$' "$sa_transport"; then
+	echo "OK   maildir_junk uses exists{} Junk/Spam/my spam/my junk, fallback .Junk"
 else
-	echo "FAIL: maildir_junk transport must clone maildir_home into Maildir/.Junk"
+	echo "FAIL: maildir_junk must nested-exists existing junk folders, fallback Maildir/.Junk"
 	fail=1
 fi
 if grep -q 'spam_score_int}{30}' "$ROOT"/config-templates/check_data_acl \
@@ -143,16 +147,16 @@ else
 	echo "FAIL: setup-mail.sh must apply_template the junk router and transport"
 	fail=1
 fi
-if grep -q '[.]forward' "$ROOT"/README.md || grep -q 'Maildir/.Spam' "$ROOT"/README.md; then
-	echo "FAIL: README must not require ~/.forward or Maildir/.Spam"
+if grep -q '[.]forward' "$ROOT"/README.md; then
+	echo "FAIL: README must not require ~/.forward"
 	fail=1
-elif grep -q 'Maildir/.Junk' "$ROOT"/README.md \
-	&& grep -q 'Junk/Spam' "$ROOT"/README.md \
+elif grep -q 'existing Junk/Spam folder' "$ROOT"/README.md \
+	&& grep -q 'Junk is created' "$ROOT"/README.md \
 	&& grep -q 'Trash/Bin' "$ROOT"/README.md \
 	&& grep -q '30 days' "$ROOT"/README.md; then
-	echo "OK   README files tagged spam into Maildir/.Junk; Junk/Spam and Trash/Bin expire at 30 days"
+	echo "OK   README files tagged spam into existing Junk/Spam (create Junk if none)"
 else
-	echo "FAIL: README should mention Maildir/.Junk and 30-day Junk/Spam Trash/Bin expiry"
+	echo "FAIL: README should file tagged spam into the existing Junk/Spam folder"
 	fail=1
 fi
 expire_job="$ROOT/config-templates/sst-expire-junk"
