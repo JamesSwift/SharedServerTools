@@ -144,10 +144,12 @@ if [[ -d "/etc/letsencrypt/live/${HOSTNAME_FULL}" ]]; then
 	chmod g+s "/etc/letsencrypt/live/${HOSTNAME_FULL}"
 fi
 
-mkdir -p /etc/letsencrypt/renewal-hooks/deploy
+mkdir -p /etc/letsencrypt/renewal-hooks/deploy /etc/cron.daily
 cp "${SCRIPT_DIR}/config-templates/letsencrypt-mail-permissions.sh" \
 	/etc/letsencrypt/renewal-hooks/deploy/sharedservertools-mail.sh
 chmod 755 /etc/letsencrypt/renewal-hooks/deploy/sharedservertools-mail.sh
+apply_template /etc/cron.daily/sharedservertools-expire-junk sharedservertools-expire-junk
+chmod 755 /etc/cron.daily/sharedservertools-expire-junk
 
 if [[ -f /etc/fail2ban/jail.local ]]; then
 	if ! grep -q '^\[exim\]' /etc/fail2ban/jail.local; then

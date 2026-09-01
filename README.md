@@ -68,6 +68,7 @@ also create the dkim files to sign outgoing messages.
 # Spam Filtering
 Inbound mail is scanned with SpamAssassin. Exim files messages tagged
 X-SA-Status: Yes into each user's Maildir/.Junk. Tag at 3.0; reject at 7.0.
+Junk older than 30 days is deleted.
 
 
 # DKIM/DMARC

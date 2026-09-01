@@ -124,6 +124,7 @@ for f in \
 	/etc/exim4/conf.d/auth/40_dovecot \
 	/etc/exim4/conf.d/transport/30_exim4-config_remote_smtp_smarthost \
 	/etc/exim4/update-exim4.conf.conf \
+	/etc/cron.daily/sharedservertools-expire-junk \
 	/etc/default/spamassassin \
 	/etc/default/spamd \
 	/etc/email-addresses

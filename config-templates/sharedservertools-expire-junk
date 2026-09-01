@@ -1,0 +1,6 @@
+#!/bin/sh
+# Expire IMAP Junk older than 30 days. Installed by setup-mail.sh as
+# /etc/cron.daily/sharedservertools-expire-junk (overwrite on re-run).
+
+[ -x /usr/bin/doveadm ] || exit 0
+/usr/bin/doveadm expunge -A mailbox Junk savedbefore 30d
