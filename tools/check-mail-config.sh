@@ -57,16 +57,30 @@ echo "OK   Exim templates use dsearch / \$domain_data"
 echo
 echo "== templates: From: restriction on submission, not inbound MX =="
 sender_acl="$ROOT/config-templates/check_data_acl"
+acl_calls=$(grep -c 'acl_check_sender' "$sender_acl" || true)
 if grep -q 'authenticated = \*' "$sender_acl" \
 	&& grep -q 'acl_check_sender \${authenticated_id}' "$sender_acl" \
-	&& grep -q 'sender_ident' "$sender_acl" \
-	&& grep -q 'received_protocol' "$sender_acl" \
-	&& grep -q 'relay_from_hosts' "$sender_acl" \
-	&& grep -q '!authenticated = \*' "$sender_acl"; then
-	echo "OK   check_data_acl covers AUTH, local injection, and localhost SMTP"
+	&& [[ "$acl_calls" -eq 1 ]]; then
+	echo "OK   check_data_acl AUTH uses acl_check_sender \${authenticated_id}"
 else
-	echo "FAIL: check_data_acl must restrict AUTH, local/notsmtp, and +relay_from_hosts"
+	echo "FAIL: AUTH must call acl_check_sender once with \${authenticated_id}"
 	fail=1
+fi
+if grep -q 'relay_from_hosts' "$sender_acl" \
+	&& grep -q '!authenticated = \*' "$sender_acl" \
+	&& grep -q 'Authentication required to submit mail from this host' "$sender_acl"; then
+	echo "OK   unauthenticated localhost SMTP is a hard AUTH-required deny"
+else
+	echo "FAIL: +relay_from_hosts without AUTH must hard-deny (no empty nested ACL)"
+	fail=1
+fi
+if grep -q 'received_protocol' "$sender_acl" \
+	|| grep -q 'sender_ident' "$sender_acl" \
+	|| awk '/hosts = \+relay_from_hosts/,/^$/' "$sender_acl" | grep -q 'acl_check_sender'; then
+	echo "FAIL: DATA ACL must not use received_protocol or empty nested ACL"
+	fail=1
+else
+	echo "OK   DATA ACL has no local/notsmtp rule and no empty nested ACL"
 fi
 if grep -q 'acl_not_smtp = acl_check_local_sender' "$ROOT"/config-templates/00_local_macros \
 	&& grep -q 'acl_check_local_sender:' "$ROOT"/config-templates/01_acl_check_sender \
