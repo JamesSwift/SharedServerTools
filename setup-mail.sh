@@ -148,8 +148,10 @@ mkdir -p /etc/letsencrypt/renewal-hooks/deploy /etc/cron.daily
 cp "${SCRIPT_DIR}/config-templates/letsencrypt-mail-permissions.sh" \
 	/etc/letsencrypt/renewal-hooks/deploy/sharedservertools-mail.sh
 chmod 755 /etc/letsencrypt/renewal-hooks/deploy/sharedservertools-mail.sh
-apply_template /etc/cron.daily/sharedservertools-expire-junk sharedservertools-expire-junk
-chmod 755 /etc/cron.daily/sharedservertools-expire-junk
+apply_template /etc/cron.daily/sst-expire-junk sst-expire-junk
+chmod 755 /etc/cron.daily/sst-expire-junk
+# Replaces the previous filename so re-runs do not stack two daily jobs.
+rm -f /etc/cron.daily/sharedservertools-expire-junk
 
 if [[ -f /etc/fail2ban/jail.local ]]; then
 	if ! grep -q '^\[exim\]' /etc/fail2ban/jail.local; then

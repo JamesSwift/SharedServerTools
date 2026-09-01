@@ -146,22 +146,32 @@ fi
 if grep -q '[.]forward' "$ROOT"/README.md || grep -q 'Maildir/.Spam' "$ROOT"/README.md; then
 	echo "FAIL: README must not require ~/.forward or Maildir/.Spam"
 	fail=1
-elif grep -q 'Maildir/.Junk' "$ROOT"/README.md && grep -q '30 days' "$ROOT"/README.md; then
-	echo "OK   README files tagged spam into Maildir/.Junk (no ~/.forward); Junk expires at 30 days"
+elif grep -q 'Maildir/.Junk' "$ROOT"/README.md \
+	&& grep -q 'Junk/Spam' "$ROOT"/README.md \
+	&& grep -q 'Trash/Bin' "$ROOT"/README.md \
+	&& grep -q '30 days' "$ROOT"/README.md; then
+	echo "OK   README files tagged spam into Maildir/.Junk; Junk/Spam and Trash/Bin expire at 30 days"
 else
-	echo "FAIL: README should mention Maildir/.Junk and 30-day expiry"
+	echo "FAIL: README should mention Maildir/.Junk and 30-day Junk/Spam Trash/Bin expiry"
 	fail=1
 fi
-expire_job="$ROOT/config-templates/sharedservertools-expire-junk"
+expire_job="$ROOT/config-templates/sst-expire-junk"
 if [[ -f "$expire_job" ]] \
-	&& grep -q 'doveadm expunge -A mailbox Junk savedbefore 30d' "$expire_job" \
-	&& ! grep -E 'mailbox (Trash|Spam)' "$expire_job" \
-	&& grep -q 'cron.daily/sharedservertools-expire-junk' "$ROOT"/setup-mail.sh \
-	&& grep -q 'apply_template /etc/cron.daily/sharedservertools-expire-junk' "$ROOT"/setup-mail.sh \
-	&& ! grep -q 'crontab' "$ROOT"/setup-mail.sh; then
-	echo "OK   setup-mail.sh installs one cron.daily Junk expunge (30d)"
+	&& grep -q '/home/\*/Maildir' "$expire_job" \
+	&& grep -q 'mailbox "$box"' "$expire_job" \
+	&& grep -q 'savedbefore 30d' "$expire_job" \
+	&& grep -q 'junk|spam|trash|bin|deleted' "$expire_job" \
+	&& grep -q '"deleted items"' "$expire_job" \
+	&& grep -q '"my junk"' "$expire_job" \
+	&& ! grep -q 'expunge -A' "$expire_job" \
+	&& ! grep -qE 'mailbox (INBOX|Archive|Sent|Drafts)' "$expire_job" \
+	&& grep -q 'apply_template /etc/cron.daily/sst-expire-junk' "$ROOT"/setup-mail.sh \
+	&& grep -q 'rm -f /etc/cron.daily/sharedservertools-expire-junk' "$ROOT"/setup-mail.sh \
+	&& ! grep -q 'crontab' "$ROOT"/setup-mail.sh \
+	&& [[ ! -f "$ROOT/config-templates/sharedservertools-expire-junk" ]]; then
+	echo "OK   setup-mail.sh installs one cron.daily sst-expire-junk (Maildir users, no -A)"
 else
-	echo "FAIL: setup-mail.sh must install a single cron.daily doveadm expunge of Junk savedbefore 30d"
+	echo "FAIL: sst-expire-junk must iterate /home/*/Maildir, not doveadm -A, and not stack old cron files"
 	fail=1
 fi
 

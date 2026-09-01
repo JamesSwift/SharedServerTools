@@ -1,0 +1,22 @@
+#!/bin/sh
+# Expire Junk/Spam and Trash/Bin older than 30 days.
+# Only unix users with /home/*/Maildir (not doveadm -A / system accounts).
+# Installed as /etc/cron.daily/sst-expire-junk (overwrite on re-run).
+
+[ -x /usr/bin/doveadm ] || exit 0
+
+for maildir in /home/*/Maildir; do
+	[ -d "$maildir" ] || continue
+	user=$(basename "$(dirname "$maildir")")
+	[ -n "$user" ] || continue
+
+	doveadm mailbox list -u "$user" 2>/dev/null | while IFS= read -r box; do
+		[ -n "$box" ] || continue
+		lc=$(printf '%s' "$box" | tr '[:upper:]' '[:lower:]')
+		case "$lc" in
+		junk|spam|trash|bin|deleted|"deleted items"|"my junk"|"my spam"|"my trash")
+			doveadm expunge -u "$user" mailbox "$box" savedbefore 30d || true
+			;;
+		esac
+	done
+done
