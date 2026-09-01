@@ -151,7 +151,8 @@ if ! update-exim4.conf; then
 	echo "ERROR: update-exim4.conf failed. See messages above." >&2
 	exit 1
 fi
-exim4 -bV | head -n 5
+# Avoid SIGPIPE/pipefail from `head` closing the pipe early.
+exim4 -bV 2>/dev/null | sed -n '1,8p' || true
 echo
 
 sst_ensure_dkim "${HOSTNAME_FULL}" "${HOSTNAME_SHORT}"
