@@ -55,6 +55,50 @@ fi
 echo "OK   Exim templates use dsearch / \$domain_data"
 
 echo
+echo "== templates: From: restriction on submission, not inbound MX =="
+sender_acl="$ROOT/config-templates/check_data_acl"
+acl_calls=$(grep -c 'acl_check_sender' "$sender_acl" || true)
+if grep -q 'authenticated = \*' "$sender_acl" \
+	&& grep -q 'acl_check_sender \${authenticated_id}' "$sender_acl" \
+	&& [[ "$acl_calls" -eq 1 ]]; then
+	echo "OK   check_data_acl AUTH uses acl_check_sender \${authenticated_id}"
+else
+	echo "FAIL: AUTH must call acl_check_sender once with \${authenticated_id}"
+	fail=1
+fi
+if grep -q 'relay_from_hosts' "$sender_acl" \
+	&& grep -q '!authenticated = \*' "$sender_acl" \
+	&& grep -q 'Authentication required to submit mail from this host' "$sender_acl"; then
+	echo "OK   unauthenticated localhost SMTP is a hard AUTH-required deny"
+else
+	echo "FAIL: +relay_from_hosts without AUTH must hard-deny (no empty nested ACL)"
+	fail=1
+fi
+if grep -q 'received_protocol' "$sender_acl" \
+	|| grep -q 'sender_ident' "$sender_acl" \
+	|| awk '/hosts = \+relay_from_hosts/,/^$/' "$sender_acl" | grep -q 'acl_check_sender'; then
+	echo "FAIL: DATA ACL must not use received_protocol or empty nested ACL"
+	fail=1
+else
+	echo "OK   DATA ACL has no local/notsmtp rule and no empty nested ACL"
+fi
+if grep -q 'acl_not_smtp = acl_check_local_sender' "$ROOT"/config-templates/00_local_macros \
+	&& grep -q 'acl_check_local_sender:' "$ROOT"/config-templates/01_acl_check_sender \
+	&& grep -q 'acl_check_sender \${sender_ident}' "$ROOT"/config-templates/01_acl_check_sender; then
+	echo "OK   local sendmail is hooked via acl_not_smtp / sender_ident"
+else
+	echo "FAIL: local sendmail must run acl_check_sender with sender_ident"
+	fail=1
+fi
+if grep -q 'dsearch,filter=file,ret=full {/etc/exim4/virtual}' "$ROOT"/config-templates/01_acl_check_sender \
+	&& ! grep -E 'virtual/\$\{?domain' "$ROOT"/config-templates/01_acl_check_sender; then
+	echo "OK   acl_check_sender still uses tainted-safe dsearch"
+else
+	echo "FAIL: do not weaken acl_check_sender dsearch"
+	fail=1
+fi
+
+echo
 echo "== templates: Maildir modes =="
 if ! grep -q 'MAILDIR_HOME_DIRECTORY_MODE = 0700' "$ROOT"/config-templates/00_local_macros; then
 	echo "FAIL: Maildir directory mode should be 0700"

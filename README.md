@@ -57,6 +57,10 @@ For example, for the above to work, you would edit the following files:
 
     info : user@localhost
 
+A unix user may send From: only those mapped addresses (and user@hostname / 
+user@localhost). SMTP AUTH and local sendmail are checked; localhost SMTP 
+requires AUTH; inbound MX is not.
+
 If the file doesn't exist already, run `add-email-domain.sh` which will create it and 
 also create the dkim files to sign outgoing messages.
 
