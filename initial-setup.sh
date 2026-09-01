@@ -17,6 +17,8 @@ echo
 echo "This script is designed to turn a clean Ubuntu 26.04 LTS installation into a working, secured, multi-domain web server, with optional Exim/Dovecot mail."
 echo "Ideally this script should be run as the very first thing you do with your new install. It will alter config files with no regard for their current state."
 echo
+echo "If this host is an existing Ubuntu 20.04 SharedServerTools box (mail still working, local tweaks), do not treat this as an in-place upgrade. See docs/upgrade-from-ubuntu-20.04.md and run tools/audit-mail-upgrade.sh first."
+echo
 echo "The process is quite simple, but you will need to answer some questions first:"
 echo
 echo

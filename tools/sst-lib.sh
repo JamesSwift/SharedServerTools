@@ -102,9 +102,32 @@ apply_template() {
 	sed -i "s/__PHP_VERSION__/${PHP_VERSION}/g" "${dest}~"
 	sed -i "s#__PHP_FPM_SOCK__#${PHP_FPM_SOCK}#g" "${dest}~"
 
+	if [[ -f "$dest" ]] && [[ -n "${SST_BACKUP_DIR:-}" ]]; then
+		mkdir -p "$SST_BACKUP_DIR"
+		cp -a "$dest" "$SST_BACKUP_DIR/$(echo "$dest" | sed 's#^/##; s#/#_#g')"
+	fi
+
 	mv "$dest" "${dest}.backup" 2>/dev/null || true
 	mv "${dest}~" "$dest"
 	return 0
+}
+
+sst_os_version_id() {
+	if [[ -f /etc/os-release ]]; then
+		# shellcheck disable=SC1091
+		. /etc/os-release
+		echo "${VERSION_ID:-unknown}"
+	else
+		echo "unknown"
+	fi
+}
+
+sst_dovecot_major_minor() {
+	local ver=""
+	if command -v dovecot >/dev/null 2>&1; then
+		ver=$(dovecot --version 2>/dev/null | awk '{print $1}')
+	fi
+	echo "${ver:-}"
 }
 
 sst_init_vars() {
@@ -152,6 +175,15 @@ sst_ensure_dkim() {
 	local selector=${2:-$(hostname)}
 
 	mkdir -p "/etc/exim4/dkim/${domain}"
+
+	# Pre-Aug-2020 SST used flat /etc/exim4/dkim/<domain>.private files.
+	if [[ -f "/etc/exim4/dkim/${domain}.private" ]] && [[ ! -f "/etc/exim4/dkim/${domain}/dkim.private" ]]; then
+		echo "Migrating flat DKIM key /etc/exim4/dkim/${domain}.private into ${domain}/dkim.private"
+		cp -a "/etc/exim4/dkim/${domain}.private" "/etc/exim4/dkim/${domain}/dkim.private"
+		if [[ -f "/etc/exim4/dkim/${domain}.public" ]]; then
+			cp -a "/etc/exim4/dkim/${domain}.public" "/etc/exim4/dkim/${domain}/dkim.public"
+		fi
+	fi
 
 	if [[ -f "/etc/exim4/dkim/${domain}/dkim.public" ]]; then
 		echo "DKIM keys were previously generated for this domain."

@@ -9,6 +9,10 @@ set -euo pipefail
 sst_require_root
 sst_init_vars
 
+OS_ID=$(sst_os_version_id)
+SST_BACKUP_DIR="/root/sharedservertools-backup-$(date +%Y%m%d%H%M%S)"
+export SST_BACKUP_DIR
+
 echo "===================="
 echo "Mail server (Exim4)"
 echo "===================="
@@ -16,10 +20,42 @@ echo
 echo "This configures Ubuntu's split Exim4 config (/etc/exim4/conf.d + update-exim4.conf),"
 echo "Dovecot 2.4 IMAP/POP3, and SpamAssassin (spamd)."
 echo
-echo "Assumptions: Ubuntu 26.04 LTS (Resolute), Exim 4.99, Dovecot 2.4, PHP ${PHP_VERSION}."
-echo "The same Exim split-config also works on Ubuntu 24.04 (Exim 4.97); Dovecot 2.4 settings"
-echo "require 26.04. See README.md."
+echo "Target: Ubuntu 26.04 LTS, Exim 4.99, Dovecot 2.4, PHP ${PHP_VERSION}."
+echo "This host reports Ubuntu ${OS_ID}."
+echo "From-version for existing SST mail boxes is Ubuntu 20.04 (Exim 4.93, Dovecot 2.3, PHP 7.4)."
+echo "Read docs/upgrade-from-ubuntu-20.04.md before overwriting a drifted host."
 echo
+
+if [[ "$OS_ID" == "20.04" ]]; then
+	echo "Refusing to install the 26.04 mail templates on Ubuntu 20.04."
+	echo "The live 20.04 stack still works because Exim 4.93 does not reject tainted"
+	echo "path expansions. Running this script here would replace working files with"
+	echo "Dovecot 2.4 settings that this release cannot parse."
+	echo
+	echo "On this box run:  sudo ${SCRIPT_DIR}/tools/audit-mail-upgrade.sh"
+	echo "Then upgrade Ubuntu to 26.04 and re-run setup-mail.sh."
+	exit 1
+fi
+
+if [[ "$OS_ID" == "22.04" || "$OS_ID" == "24.04" ]]; then
+	echo "WARNING: Ubuntu ${OS_ID} can load the taint-safe Exim snippets, but Dovecot is"
+	echo "still 2.3. The 99-sharedservertools.conf drop-in is Dovecot 2.4 syntax and"
+	echo "will not start imap/pop3 on this release. Prefer finishing the upgrade to 26.04."
+	echo
+	read -p "Install Exim snippets anyway (Dovecot drop-in will still be written)? [y/N]" -n 1 -r
+	echo
+	if ! [[ $REPLY =~ ^[Yy]$ ]]; then
+		echo "Canceled."
+		exit 1
+	fi
+fi
+
+DOVECOT_VER=$(sst_dovecot_major_minor)
+if [[ -n "$DOVECOT_VER" && "$DOVECOT_VER" == 2.3* ]]; then
+	echo "Installed Dovecot ${DOVECOT_VER}: after this script, check that 10-ssl.conf /"
+	echo "10-mail.conf do not still use mail_location or ssl_cert = <  (2.3 SST copies)."
+	echo
+fi
 
 if [[ ! -f "/etc/letsencrypt/live/${HOSTNAME_FULL}/fullchain.pem" ]]; then
 	echo "WARNING: No Let's Encrypt certificate found for ${HOSTNAME_FULL}."
@@ -59,6 +95,14 @@ apt-get install -y exim4-daemon-heavy dovecot-imapd dovecot-pop3d dovecot-sieve 
 
 echo
 echo "Setting up Dovecot:"
+# 20.04 SST replaced 10-*.conf with 2.3 syntax. 26.04 Dovecot will not start if those remain.
+for f in /etc/dovecot/conf.d/10-ssl.conf /etc/dovecot/conf.d/10-mail.conf \
+	/etc/dovecot/conf.d/10-master.conf /etc/dovecot/conf.d/10-auth.conf; do
+	if [[ -f "$f" ]] && grep -qE '^\s*(mail_location|ssl_cert|ssl_key)\s*=' "$f"; then
+		echo "NOTE: $f still has Dovecot 2.3 settings. After 26.04, move it aside and"
+		echo "      use the distro file plus 99-sharedservertools.conf. See docs/upgrade-from-ubuntu-20.04.md"
+	fi
+done
 apply_template /etc/dovecot/conf.d/99-sharedservertools.conf 99-sharedservertools-dovecot.conf
 # Do not replace Ubuntu's 2.4 10-*.conf files; only the drop-in above is ours.
 chmod 644 /var/www 2>/dev/null || true
@@ -164,4 +208,7 @@ echo "SMTP submission: Exim on 587 (STARTTLS) and 465 (implicit TLS)."
 echo "Virtual aliases: /etc/exim4/virtual/<domain>  (see add-email-domain.sh)"
 echo
 echo "To add another mail domain without a website, run add-email-domain.sh"
+echo
+echo "Replaced files were copied to ${SST_BACKUP_DIR} (and to *.backup beside each file)."
+echo "Merge any local 20.04 tweaks from that backup; do not restore tainted \$domain paths."
 echo

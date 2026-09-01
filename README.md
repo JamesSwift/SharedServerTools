@@ -20,15 +20,17 @@ The scripts assume a basic knowledge of server configurations, and they assume y
 
 ## Version assumptions (September 2026)
 
-| Component | Target |
-| --- | --- |
-| OS | Ubuntu 26.04 LTS (Resolute Raccoon) |
-| Exim | 4.99, Ubuntu split config (`/etc/exim4/conf.d` + `update-exim4.conf`) |
-| Dovecot | 2.4 (config syntax is not compatible with 2.3) |
-| PHP | distro default via `php-fpm` (8.5 on 26.04) |
-| SpamAssassin | 4.x `spamd` systemd unit |
+| | From (production SST boxes) | To (this repo) |
+| --- | --- | --- |
+| OS | **Ubuntu 20.04 LTS** (Focal), often with local edits on top of SST | **Ubuntu 26.04 LTS** (Resolute) |
+| Exim | 4.93 — tainted path expansions still work | 4.99 split config + `dsearch` de-taint |
+| Dovecot | 2.3 (`mail_location`, `ssl_cert = <…`) | **2.4** (new setting names; old `10-*.conf` copies will not parse) |
+| PHP | 7.4 (`php7.4-fpm`) | distro `php-fpm` (**8.5** on 26.04) |
+| SpamAssassin | 3.4, `spamassassin.service`, optional `sa-exim` | 4.x **`spamd`**, Exim `spam =` ACL |
 
-Ubuntu 24.04 LTS can run the **Exim** half (taint-safe split config, Exim 4.97). Dovecot 2.4 drop-in settings will not load on 24.04's Dovecot 2.3; use 26.04 if you want IMAP/POP3 from these scripts.
+Ubuntu 24.04 can load the **Exim** snippets (4.97, same taint rules). Dovecot 2.4 drop-in settings will not run on 24.04’s Dovecot 2.3. `setup-mail.sh` **refuses to run on 20.04** so it cannot clobber a working 4.93 stack with 2.4 Dovecot files.
+
+Greenfield: install 26.04 and run `initial-setup.sh`. Existing 20.04 host: **`docs/upgrade-from-ubuntu-20.04.md`** — that is the real path for a box with years of local drift.
 
 # Installation
 
@@ -40,23 +42,24 @@ Ubuntu 24.04 LTS can run the **Exim** half (taint-safe split config, Exim 4.97).
 
     sudo ./SharedServerTools/setup-mail.sh
 
-# Enabling mail on a server that was stuck off 22.04+
+# Enabling mail / moving off Ubuntu 20.04
 
-Mail was removed on 2022-05-02 (`3a5a388`) because Ubuntu 22.04 shipped Exim 4.95, which **rejects tainted data in file names**. The old virtual-domain and DKIM snippets used `$domain` / `$local_part` (and From: headers) directly in paths. Same-day attempts (`eaa8e9d`, `d0a1555`, `1bb9f1c`) mixed `_data` variables incorrectly and then the stack was stripped.
+Mail still works on 20.04 because Focal’s Exim 4.93 does not reject tainted filenames. Ubuntu 22.04 shipped Exim 4.95, which **does**. That is why SST mail was deleted on 2022-05-02 (`3a5a388`) after same-day `_data` experiments failed, and why a production host stayed on 20.04 with local tweaks.
 
-This restore keeps Ubuntu's split Exim layout and de-taints with `dsearch` (the approach documented in Exim 4.99 spec chapter 51):
+This restore is built for **26.04 after that upgrade**, not as a patch you apply on 20.04:
 
-1. Upgrade the host to Ubuntu 26.04 LTS (or install 26.04 fresh).
-2. Clone this repo and run `sudo ./initial-setup.sh` (say yes to mail) **or** `sudo ./setup-mail.sh` if the web stack is already in place.
-3. Existing `/etc/exim4/virtual/` alias files and `/etc/exim4/dkim/*/dkim.private` keys are reused if you copy them over; the paths did not change.
-4. Publish the DKIM/SPF/DMARC records printed by `add-email-domain.sh` (re-run it for a domain to reprint DNS).
-5. Point MX at this host. Submission is 587 (STARTTLS) and 465 (implicit TLS). IMAP/POP3 are 993/995 with TLS required.
+1. On the 20.04 box: `sudo ./tools/audit-mail-upgrade.sh | tee /root/sst-mail-audit.txt`
+2. Read **[docs/upgrade-from-ubuntu-20.04.md](docs/upgrade-from-ubuntu-20.04.md)** — what to copy, which files SST will replace, which old `10-*.conf` / smarthost / `spamassassin` files you must merge by hand, and behaviour changes (`tls_on_connect` on 587, `MAIN_FORCE_SENDER`, PHP pools).
+3. Upgrade Ubuntu to 26.04 LTS (20.04 → 22.04 → 24.04 → 26.04). Expect mail to break at 22.04 until the next step.
+4. `sudo ./setup-mail.sh` (or `initial-setup.sh` only on a **clean** 26.04 disk). Replaced files go to `/root/sharedservertools-backup-<timestamp>/`. `/etc/exim4/virtual/` and `/etc/exim4/dkim/` are left in place.
+5. Re-apply local diffs from the backup using `dsearch` / Dovecot 2.4 names. Do not paste 20.04 `$domain` paths back.
+6. Reprint DKIM/SPF/DMARC with `add-email-domain.sh`. Submission: 587 STARTTLS, 465 implicit TLS. IMAP/POP3: 993/995.
 
 What we did **not** bring back:
 
-- Replacing Dovecot's entire `10-*.conf` files (those were Ubuntu 22.04 / Dovecot 2.3 copies and will not parse on 2.4). Overrides live in `conf.d/99-sharedservertools.conf`.
-- Replacing Debian's `remote_smtp_smarthost` transport. `dc_eximconfig_configtype='internet'` uses stock `remote_smtp`, which already honours `DKIM_*` macros.
-- `sa-exim` (not in Ubuntu 26.04). Spam is handled by Exim's `spam =` ACL against `spamd`.
+- Replacing Dovecot’s entire `10-*.conf` files (20.04/22.04 SST copies). Overrides live in `conf.d/99-sharedservertools.conf`.
+- Replacing Debian’s `remote_smtp_smarthost` transport. `internet` uses stock `remote_smtp`, which already honours `DKIM_*`.
+- `sa-exim` (not in Ubuntu 26.04). Spam is Exim’s `spam =` ACL against `spamd`.
 - `dovecot-antispam` (not in the 2.4 package set).
 
 # Email addresses
@@ -93,4 +96,8 @@ SMTP AUTH users may only send as addresses listed for them in `/etc/exim4/virtua
 
 # Upgrading
 
-There is no safe upgrade path from pre v0.1.0 versions. Pulling git master onto an old customized host may still surprise you. For mail: if you still have `/etc/exim4/virtual` and `/etc/exim4/dkim` from before May 2022, copy them aside, upgrade Ubuntu, run `setup-mail.sh`, then copy those directories back and `update-exim4.conf && systemctl restart exim4`.
+There is no automatic upgrade from pre-v0.1.0, and **there is no safe “git pull and re-run initial-setup.sh” on a 20.04 host with local drift**. `initial-setup.sh` still rewrites nginx/php/fail2ban from templates.
+
+- Clean 26.04: `initial-setup.sh`.
+- 20.04 production SST + local mods: `docs/upgrade-from-ubuntu-20.04.md` and `tools/audit-mail-upgrade.sh`.
+- 26.04 that already has the web stack: `setup-mail.sh` only.
