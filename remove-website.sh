@@ -45,7 +45,7 @@ echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
 	rm -f "$(sst_php_fpm_pool_dir)/${username}.conf"
 	service "$(sst_php_fpm_service)" restart || true
-	deluser www-data "$username" 2>/dev/null || true
-	deluser "$username" || sst_die "deluser ${username} failed."
-	rm -rf "/home/${username}"
+	sst_delete_site_user "$username"
+else
+	sst_cleanup_owner_if_no_sites "$username"
 fi

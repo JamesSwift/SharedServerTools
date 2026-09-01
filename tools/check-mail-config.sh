@@ -71,6 +71,117 @@ if grep -R '__[A-Z0-9_]*__' "$ROOT"/config-templates/00_local_macros \
 	echo "(info) leftover placeholders shown above if any unexpected"
 fi
 
+echo
+echo "== site user: www-data group is reversed before userdel =="
+if grep -q 'usermod -aG "$username" www-data' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'sst_nginx_join_owner_group' "$ROOT"/add-website.sh; then
+	echo "OK   add-website still adds www-data to the owner group"
+else
+	echo "FAIL: live sites must still run usermod -aG USER www-data"
+	fail=1
+fi
+if grep -q 'gpasswd -d www-data' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'userdel -r' "$ROOT"/tools/sst-lib.sh \
+	&& grep -q 'sst_delete_site_user' "$ROOT"/remove-website.sh; then
+	echo "OK   remove-website deletes users via gpasswd then userdel -r"
+else
+	echo "FAIL: site/user removal must drop www-data from the group then userdel -r"
+	fail=1
+fi
+
+# Remaining-site detection (no root needed).
+# shellcheck source=/dev/null
+. "$ROOT/tools/sst-lib.sh"
+site_tmp=$(mktemp -d)
+SST_NGINX_AVAILABLE=$site_tmp
+printf '%s\n' "#__OWNER__=alice" > "$site_tmp/alice.com"
+printf '%s\n' "#__OWNER__=alice2" > "$site_tmp/other.com"
+if sst_owner_has_remaining_sites alice && sst_owner_has_remaining_sites alice2 \
+	&& ! sst_owner_has_remaining_sites bob; then
+	echo "OK   sst_owner_has_remaining_sites matches whole owner names"
+else
+	echo "FAIL: sst_owner_has_remaining_sites matching"
+	fail=1
+fi
+rm -rf "$site_tmp"
+
+if [[ $EUID -eq 0 ]] && getent passwd www-data >/dev/null && command -v userdel >/dev/null; then
+	live_u=ssttmpusr
+	userdel -r "$live_u" >/dev/null 2>&1 || true
+	groupdel "$live_u" >/dev/null 2>&1 || true
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	if id -nG www-data | grep -qw "$live_u"; then
+		echo "OK   sst_nginx_join_owner_group adds www-data"
+	else
+		echo "FAIL: www-data was not added to ${live_u}"
+		fail=1
+	fi
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	sst_delete_site_user "$live_u"
+	if getent passwd "$live_u" >/dev/null || getent group "$live_u" >/dev/null; then
+		echo "FAIL: user/group ${live_u} left behind after sst_delete_site_user"
+		fail=1
+	elif id -nG www-data | grep -qw "$live_u"; then
+		echo "FAIL: www-data still in leftover ${live_u} group"
+		fail=1
+	else
+		echo "OK   sst_delete_site_user removes user and group"
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+
+	# Last site gone but the unix user is kept: drop www-data, keep the account.
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	sst_cleanup_owner_if_no_sites "$live_u"
+	if ! getent passwd "$live_u" >/dev/null; then
+		echo "FAIL: cleanup without remaining sites must not delete the unix user"
+		fail=1
+	elif id -nG www-data | grep -qw "$live_u"; then
+		echo "FAIL: www-data still in ${live_u} after last site removed"
+		fail=1
+	else
+		echo "OK   last site gone: www-data leaves the group, user kept"
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+	sst_delete_site_user "$live_u"
+
+	# Owner still has another site: leave www-data in the group.
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	printf '%s\n' "#__OWNER__=${live_u}" > "$SST_NGINX_AVAILABLE/still-live.example"
+	sst_cleanup_owner_if_no_sites "$live_u"
+	if id -nG www-data | grep -qw "$live_u" && getent passwd "$live_u" >/dev/null; then
+		echo "OK   remaining sites keep www-data in the owner group"
+	else
+		echo "FAIL: www-data was removed while a site still exists"
+		fail=1
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+	sst_delete_site_user "$live_u"
+
+	# Leftover group from userdel -r without gpasswd first.
+	adduser --disabled-password --gecos "" "$live_u" >/dev/null
+	sst_nginx_join_owner_group "$live_u"
+	userdel -r "$live_u" >/dev/null 2>&1 || true
+	SST_NGINX_AVAILABLE=$(mktemp -d)
+	sst_cleanup_owner_if_no_sites "$live_u"
+	if getent group "$live_u" >/dev/null; then
+		echo "FAIL: leftover group ${live_u} not cleaned"
+		fail=1
+	else
+		echo "OK   leftover group with no sites is removed"
+	fi
+	rm -rf "$SST_NGINX_AVAILABLE"
+	userdel -r "$live_u" >/dev/null 2>&1 || true
+	groupdel "$live_u" >/dev/null 2>&1 || true
+else
+	echo "(not root; skipped live userdel group checks)"
+fi
+unset SST_NGINX_AVAILABLE || true
+
 if command -v exim4 >/dev/null 2>&1; then
 	echo
 	echo "== installed Exim =="

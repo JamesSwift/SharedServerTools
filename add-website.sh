@@ -93,7 +93,7 @@ else
 	cd "$DOC_ROOT" || sst_die "Could not enter ${DOC_ROOT}."
 
 	# nginx (www-data) needs group read on this user's files.
-	usermod -aG "${username}" www-data
+	sst_nginx_join_owner_group "${username}"
 
 	read -p "Do you want to set up a git repo in the document root which auto-checks out any commits you push to it? [Y/n]" -n 1 -r
 	echo

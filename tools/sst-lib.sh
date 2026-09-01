@@ -98,6 +98,72 @@ sst_ensure_site_user() {
 	fi
 }
 
+# nginx (www-data) needs group read on this user's ~/www.
+sst_nginx_join_owner_group() {
+	local username=$1
+	usermod -aG "$username" www-data
+}
+
+# Reverse sst_nginx_join_owner_group so userdel can remove the group.
+sst_nginx_leave_owner_group() {
+	local username=$1
+	if getent group "$username" >/dev/null 2>&1; then
+		gpasswd -d www-data "$username" 2>/dev/null || true
+	fi
+}
+
+# True if any nginx site config is still owned by this user.
+sst_owner_has_remaining_sites() {
+	local username=$1
+	local f
+	[[ -d "${SST_NGINX_AVAILABLE}" ]] || return 1
+	for f in "${SST_NGINX_AVAILABLE}"/*; do
+		[[ -f "$f" ]] || continue
+		if grep -qE "^#__OWNER__=${username}[[:space:]]*$" "$f"; then
+			return 0
+		fi
+	done
+	return 1
+}
+
+# Drop www-data from the group, userdel -r, then remove any leftover group.
+sst_delete_site_user() {
+	local username=$1
+	if ! sst_valid_site_user "$username"; then
+		sst_die "Refusing to delete '${username}'."
+	fi
+	sst_nginx_leave_owner_group "$username"
+	if getent passwd "$username" >/dev/null; then
+		userdel -r "$username" || true
+		if getent passwd "$username" >/dev/null; then
+			sst_die "userdel ${username} failed."
+		fi
+	fi
+	if [[ -d "/home/${username}" ]]; then
+		rm -rf "/home/${username}"
+	fi
+	if getent group "$username" >/dev/null 2>&1 && ! getent passwd "$username" >/dev/null; then
+		sst_nginx_leave_owner_group "$username"
+		groupdel "$username" 2>/dev/null || true
+	fi
+}
+
+# If this owner has no sites left, drop nginx's extra group membership.
+# If the unix user is already gone, remove a leftover namesake group.
+sst_cleanup_owner_if_no_sites() {
+	local username=$1
+	if ! sst_valid_site_user "$username"; then
+		return 0
+	fi
+	if sst_owner_has_remaining_sites "$username"; then
+		return 0
+	fi
+	sst_nginx_leave_owner_group "$username"
+	if ! getent passwd "$username" >/dev/null && getent group "$username" >/dev/null 2>&1; then
+		groupdel "$username" 2>/dev/null || true
+	fi
+}
+
 replace_config_param() {
 	# args: file, key, new_value, (old_value to match against)
 	if [ -z "$1" ]; then
