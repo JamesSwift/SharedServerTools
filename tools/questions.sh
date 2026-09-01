@@ -1,4 +1,5 @@
 #!/bin/bash
+# Scratch file for yes/no prompt patterns. Not used by setup.
 read -p "Do thing? [Y/n]" -n 1 -r
 if ! [[ $REPLY =~ ^[Nn]$ ]]
 then

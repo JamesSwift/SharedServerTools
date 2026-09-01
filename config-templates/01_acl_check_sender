@@ -1,0 +1,53 @@
+# Restrict which From:/Sender:/envelope addresses an SMTP-authenticated
+# system user may use. Called from check_data_acl with $acl_arg1 = username.
+#
+# Header domains are tainted: never use them in a file path. dsearch the
+# virtual-domain directory first; $value (ret=full) is an untainted path
+# that is safe to lsearch. Lookup *keys* may still be tainted.
+
+acl_check_sender:
+
+  # Unix user at the server hostname, including the default From: Exim adds.
+  accept
+    condition = ${if eq{$sender_address}{$acl_arg1@$qualify_domain}}
+    condition = ${if eq{${address:$h_from:}}{$acl_arg1@$qualify_domain}}
+
+  accept
+    condition = ${if eq{$sender_address}{$acl_arg1@localhost}}
+    condition = ${if eq{${address:$h_from:}}{$acl_arg1@localhost}}
+
+  deny
+    ! condition = ${if eq\
+        {$acl_arg1@localhost}\
+        {${lookup {${lc:${domain:${address:$h_from:}}}} dsearch,filter=file,ret=full {/etc/exim4/virtual} \
+          {${lookup {${local_part:${address:$h_from:}}} lsearch{$value}}} \
+          {fail}}\
+        }\
+      }
+    message = You are not authorized to send from the specified From: address.
+
+  # Most messages have no Sender: header; skip the check when it is empty.
+  deny
+     ! condition = ${if or{\
+        {eq {$h_sender:}{}}\
+        {eq\
+           {$acl_arg1@localhost}\
+           {${lookup {${lc:${domain:${address:$h_sender:}}}} dsearch,filter=file,ret=full {/etc/exim4/virtual} \
+             {${lookup {${local_part:${address:$h_sender:}}} lsearch{$value}}} \
+             {fail}}\
+           }\
+        }\
+      }}
+    message = You are not authorized to send from the specified Sender: address.
+
+  deny
+    ! condition = ${if eq\
+        {$acl_arg1@localhost}\
+        {${lookup {${lc:$sender_address_domain}} dsearch,filter=file,ret=full {/etc/exim4/virtual} \
+          {${lookup {$sender_address_local_part} lsearch{$value}}} \
+          {fail}}\
+        }\
+      }
+    message = You are not authorized to send from the specified envelope sender.
+
+  accept

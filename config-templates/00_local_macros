@@ -1,0 +1,36 @@
+# SharedServerTools local macros (Debian/Ubuntu split config).
+# Exim 4.94+ will not use $domain / $local_part in file paths. dsearch
+# returns an untainted directory entry ($domain_data / $value).
+
+MAIN_TLS_ENABLE = yes
+MAIN_TLS_CERTIFICATE = /etc/letsencrypt/live/__HOSTNAME_FULL__/fullchain.pem
+MAIN_TLS_PRIVATEKEY = /etc/letsencrypt/live/__HOSTNAME_FULL__/privkey.pem
+
+MAIN_LOCAL_DOMAINS = @:localhost:dsearch;/etc/exim4/virtual
+
+DKIM_CANON = relaxed
+DKIM_SELECTOR = __HOSTNAME_SHORT__
+
+DKIM_DOMAIN = ${lookup {${lc:${domain:${address:$h_from:}}}} dsearch,filter=dir {/etc/exim4/dkim}}
+
+DKIM_PRIVATE_KEY = ${lookup {${lc:${domain:${address:$h_from:}}}} dsearch,filter=dir,ret=full {/etc/exim4/dkim} {$value/dkim.private}{}}
+
+# 25: SMTP STARTTLS. 587: submission STARTTLS. 465: implicit TLS (tls_on_connect).
+daemon_smtp_ports = 25 : 465 : 587
+tls_on_connect_ports = 465
+
+auth_advertise_hosts = ${if eq{$tls_in_cipher}{}{}{*}}
+
+spamd_address = 127.0.0.1 783
+
+CHECK_DATA_LOCAL_ACL_FILE = /etc/exim4/check_data_acl
+
+MESSAGE_SIZE_LIMIT = 100M
+IGNORE_SMTP_LINE_LENGTH_LIMIT = 1
+
+# Leave MAIN_FORCE_SENDER unset so Debian's untrusted_set_sender=* applies.
+MAIN_TRUSTED_GROUPS = sudo
+
+MAILDIR_HOME_CREATE_DIRECTORY = 1
+MAILDIR_HOME_DIRECTORY_MODE = 0700
+MAILDIR_HOME_MODE = 0600

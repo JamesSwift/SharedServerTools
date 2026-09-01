@@ -1,0 +1,14 @@
+# Virtual aliases in /etc/exim4/virtual/<domain>
+#   info : user@localhost
+# dsearch de-taints $domain into $domain_data (Exim 4.94+).
+# no_more is unset so leftover addresses can still hit local_user.
+
+vdom_aliases:
+      driver = redirect
+      allow_defer
+      allow_fail
+      domains = dsearch,filter=file;/etc/exim4/virtual
+      data = ${lookup{$local_part}lsearch*@{/etc/exim4/virtual/$domain_data}}
+      retry_use_local_part
+      pipe_transport   = address_pipe
+      file_transport   = address_file

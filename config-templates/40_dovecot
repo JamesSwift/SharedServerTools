@@ -1,0 +1,20 @@
+# SMTP AUTH via Dovecot (system users / PAM). Requires the auth-client
+# socket in Dovecot's 99-sharedservertools.conf.
+
+dovecot_login:
+  driver = dovecot
+  public_name = LOGIN
+  server_socket = /run/dovecot/auth-client
+  server_set_id = $auth1
+  .ifndef AUTH_SERVER_ALLOW_NOTLS_PASSWORDS
+  server_advertise_condition = ${if eq{$tls_in_cipher}{}{}{*}}
+  .endif
+
+dovecot_plain:
+  driver = dovecot
+  public_name = PLAIN
+  server_socket = /run/dovecot/auth-client
+  server_set_id = $auth1
+  .ifndef AUTH_SERVER_ALLOW_NOTLS_PASSWORDS
+  server_advertise_condition = ${if eq{$tls_in_cipher}{}{}{*}}
+  .endif

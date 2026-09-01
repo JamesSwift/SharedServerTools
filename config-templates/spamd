@@ -1,0 +1,6 @@
+# /etc/default/spamd  (Ubuntu 24.04+ / 26.04; package "spamd")
+# See man spamd for possible options. The -d option is automatically added.
+
+OPTIONS="--create-prefs --max-children 5 --helper-home-dir"
+
+PIDFILE="/run/spamd.pid"
