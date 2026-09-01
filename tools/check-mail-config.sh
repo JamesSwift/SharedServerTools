@@ -55,6 +55,36 @@ fi
 echo "OK   Exim templates use dsearch / \$domain_data"
 
 echo
+echo "== templates: From: restriction on submission, not inbound MX =="
+sender_acl="$ROOT/config-templates/check_data_acl"
+if grep -q 'authenticated = \*' "$sender_acl" \
+	&& grep -q 'acl_check_sender \${authenticated_id}' "$sender_acl" \
+	&& grep -q 'sender_ident' "$sender_acl" \
+	&& grep -q 'received_protocol' "$sender_acl" \
+	&& grep -q 'relay_from_hosts' "$sender_acl" \
+	&& grep -q '!authenticated = \*' "$sender_acl"; then
+	echo "OK   check_data_acl covers AUTH, local injection, and localhost SMTP"
+else
+	echo "FAIL: check_data_acl must restrict AUTH, local/notsmtp, and +relay_from_hosts"
+	fail=1
+fi
+if grep -q 'acl_not_smtp = acl_check_local_sender' "$ROOT"/config-templates/00_local_macros \
+	&& grep -q 'acl_check_local_sender:' "$ROOT"/config-templates/01_acl_check_sender \
+	&& grep -q 'acl_check_sender \${sender_ident}' "$ROOT"/config-templates/01_acl_check_sender; then
+	echo "OK   local sendmail is hooked via acl_not_smtp / sender_ident"
+else
+	echo "FAIL: local sendmail must run acl_check_sender with sender_ident"
+	fail=1
+fi
+if grep -q 'dsearch,filter=file,ret=full {/etc/exim4/virtual}' "$ROOT"/config-templates/01_acl_check_sender \
+	&& ! grep -E 'virtual/\$\{?domain' "$ROOT"/config-templates/01_acl_check_sender; then
+	echo "OK   acl_check_sender still uses tainted-safe dsearch"
+else
+	echo "FAIL: do not weaken acl_check_sender dsearch"
+	fail=1
+fi
+
+echo
 echo "== templates: Maildir modes =="
 if ! grep -q 'MAILDIR_HOME_DIRECTORY_MODE = 0700' "$ROOT"/config-templates/00_local_macros; then
 	echo "FAIL: Maildir directory mode should be 0700"

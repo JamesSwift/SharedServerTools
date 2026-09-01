@@ -24,6 +24,8 @@ auth_advertise_hosts = ${if eq{$tls_in_cipher}{}{}{*}}
 spamd_address = 127.0.0.1 783
 
 CHECK_DATA_LOCAL_ACL_FILE = /etc/exim4/check_data_acl
+# Local sendmail (not SMTP) uses the same From: restriction.
+acl_not_smtp = acl_check_local_sender
 
 MESSAGE_SIZE_LIMIT = 100M
 IGNORE_SMTP_LINE_LENGTH_LIMIT = 1

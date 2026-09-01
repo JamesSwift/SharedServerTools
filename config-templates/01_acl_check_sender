@@ -1,5 +1,5 @@
-# Restrict which From:/Sender:/envelope addresses an SMTP-authenticated
-# system user may use. Called from check_data_acl with $acl_arg1 = username.
+# Restrict which From:/Sender:/envelope addresses a system user may use.
+# Called with $acl_arg1 = unix username.
 #
 # Header domains are tainted: never use them in a file path. dsearch the
 # virtual-domain directory first; $value (ret=full) is an untainted path
@@ -50,4 +50,10 @@ acl_check_sender:
       }
     message = You are not authorized to send from the specified envelope sender.
 
+  accept
+
+# Local sendmail (not SMTP) uses the unix sender identity.
+acl_check_local_sender:
+  deny
+    ! acl = acl_check_sender ${sender_ident}
   accept

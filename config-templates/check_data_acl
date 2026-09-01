@@ -1,7 +1,18 @@
 # Included from Debian's acl_check_data via CHECK_DATA_LOCAL_ACL_FILE.
-# SMTP-authenticated users may only From: addresses listed for them.
+# Submission (AUTH, local sendmail, localhost SMTP) may only From:
+# addresses listed for that unix user. Inbound MX is unrestricted.
+
 deny
   authenticated = *
+  ! acl = acl_check_sender ${authenticated_id}
+
+deny
+  condition = ${if match{$received_protocol}{\N^(local|notsmtp)\N}}
+  ! acl = acl_check_sender ${sender_ident}
+
+deny
+  hosts = +relay_from_hosts
+  !authenticated = *
   ! acl = acl_check_sender ${authenticated_id}
 
 # SpamAssassin via exim4-daemon-heavy content scanning.
