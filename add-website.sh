@@ -10,8 +10,10 @@ echo "==========================="
 echo "Creating/Altering A Website"
 echo "==========================="
 echo
-echo "Each website is owned by a Unix user. PHP and (if mail is enabled) ~/Maildir"
-echo "run as that user so site owners cannot read each other's files by default."
+echo "A Unix user owns a group of sites and their mail — not one user per domain."
+echo "Reuse an existing username if this site belongs to the same person/business."
+echo "PHP, ~/www, and ~/Maildir for all of that group's domains run as that user."
+echo "Other Unix users cannot read those files by default."
 echo
 echo "Please enter the domain name of the website (excluding www):"
 read -r domain
@@ -74,7 +76,9 @@ if [[ -f "${SST_NGINX_AVAILABLE}/${domain}" ]]; then
 	fi
 	echo
 else
-	echo "Which user should own this new website (will be created if doesn't exist):"
+	echo "Which Unix user should own this website? Reuse an existing user if this"
+	echo "domain belongs to the same person as other sites already on this server"
+	echo "(will be created if it does not exist):"
 	read -r username
 	if [[ -z "$username" ]]; then
 		sst_die "No username entered."
@@ -176,11 +180,13 @@ if sst_mail_enabled; then
 
 	echo
 	echo "Mail for this domain is delivered to Unix user '${username}' (~ /home/${username}/Maildir)."
-	echo "IMAP/POP3 login is that username and password — not a shared mailbox account."
+	echo "That is the same account that owns this group's websites. IMAP login is"
+	echo "that username (not a shared vmail user, and not a new user per domain)."
 	echo
-	echo "To add more addresses, edit: ${SST_EXIM_VIRTUAL}/${domain}"
+	echo "To add more addresses for this domain, edit: ${SST_EXIM_VIRTUAL}/${domain}"
 	echo "Example:"
 	echo "  info : ${username}@localhost"
+	echo "  sales : ${username}@localhost"
 	echo
 else
 	echo

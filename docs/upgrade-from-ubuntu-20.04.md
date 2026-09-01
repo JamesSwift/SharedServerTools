@@ -92,12 +92,12 @@ If `10-ssl.conf` still contains `ssl_cert = <` after upgrade, move the SST copie
 
 ## Permissions / isolation after upgrade
 
-20.04 SST often left site homes world-traversable (0755). This restore keeps the same Unix-user-per-owner model but tightens defaults:
+20.04 SST often left owner homes world-traversable (0755). This restore keeps the same Unix-user-per-owner-group model (one user, many sites and mail aliases) but tightens defaults:
 
-- Site-owner home: **0750** (`add-website.sh` / `sst_ensure_site_user`).
-- `~/Maildir`: **0700** (Exim `MAILDIR_HOME_DIRECTORY_MODE` on first create).
+- Owner-group home: **0750** (`add-website.sh` / `sst_ensure_site_user`). Reuse that user for further domains; do not create a new Unix user per site.
+- `~/Maildir`: **0700** (Exim `MAILDIR_HOME_DIRECTORY_MODE` on first create). All of that group’s mail aliases deliver here.
 - `/etc/exim4/virtual/` and `dkim/`: **750**, private keys **640**, `root:Debian-exim` (was 770 on some trees).
 
-Existing 0755 Maildirs are not rewritten automatically. After upgrade, for each mail user: `chmod 0750 /home/USER` and `chmod 0700 /home/USER/Maildir` if that directory already exists.
+Existing 0755 Maildirs are not rewritten automatically. After upgrade, for each owner-group user: `chmod 0750 /home/USER` and `chmod 0700 /home/USER/Maildir` if that directory already exists.
 
-There is still no per-user Exim/Dovecot daemon. See the README isolation section.
+There is still no per-user Exim/Dovecot daemon. Isolation is between different Unix users, not between two domains of the same owner. See the README isolation section.

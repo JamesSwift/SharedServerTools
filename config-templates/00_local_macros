@@ -39,12 +39,12 @@ CHECK_DATA_LOCAL_ACL_FILE = /etc/exim4/check_data_acl
 MESSAGE_SIZE_LIMIT = 100M
 IGNORE_SMTP_LINE_LENGTH_LIMIT = 1
 
-# php-fpm / website users inject mail via /usr/sbin/sendmail. Leave
+# php-fpm (per owner-group Unix user) injects mail via /usr/sbin/sendmail. Leave
 # MAIN_FORCE_SENDER unset so Debian's untrusted_set_sender=* applies.
 # SMTP AUTH submissions are still restricted by acl_check_sender.
 MAIN_TRUSTED_GROUPS = sudo
 
-# Create ~/Maildir on first delivery. 0700 so other Unix users cannot read mail.
+# Create ~/Maildir on first delivery. 0700 so other owner-groups cannot read mail.
 MAILDIR_HOME_CREATE_DIRECTORY = 1
 MAILDIR_HOME_DIRECTORY_MODE = 0700
 MAILDIR_HOME_MODE = 0600

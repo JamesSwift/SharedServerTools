@@ -344,7 +344,8 @@ echo "Single-Site Server"
 echo "  If this server will host only one domain, you can store your files in /var/www/html"
 echo
 echo "Multi-Site Server"
-echo "  If you plan to host multiple websites, from multiple users, run the add-website.sh file for each domain."
+echo "  Run add-website.sh for each domain. Reuse the same Unix user when several"
+echo "  sites belong to the same person; use a different user for a different owner."
 echo
 echo
 echo "You can re-run this setup file at any time to alter your configuration."

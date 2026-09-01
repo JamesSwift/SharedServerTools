@@ -1,12 +1,15 @@
 #!/bin/bash
 # Shared helpers for SharedServerTools scripts. Source this file; do not execute it.
 #
-# Isolation model (everyone on the box is trusted, but users should not
+# Isolation model (everyone on the box is trusted, but groups should not
 # casually read each other's files):
-#   - One Unix user per site owner; PHP-FPM pool and ~/www run as that user.
-#   - Mail for that owner is ~/Maildir (mode 0700), not a shared vmail account.
+#   - One Unix user per owner-group (a person/business), NOT per domain.
+#     That user can own many websites and many mail aliases.
+#   - PHP-FPM pool and ~/www/<domain>/ for all of that group's sites run
+#     as that user. Mail for the group is ~/Maildir (mode 0700).
 #   - Virtual domains are alias files that redirect to user@localhost.
-#   - nginx is in the site user's group so it can read static files (0750 home).
+#   - Isolation is between different Unix users, not between two domains
+#     owned by the same user. nginx is in the user's group (0750 home).
 
 # Override these before sourcing if you ever relocate Debian's layout.
 : "${SST_EXIM_VIRTUAL:=/etc/exim4/virtual}"
@@ -82,7 +85,7 @@ sst_add_admin_groups() {
 	done
 }
 
-# Site owners: letters, digits, _ and - only. Not system/mail daemon names.
+# Owner-group accounts: letters, digits, _ and - only. Not system/mail daemons.
 sst_valid_site_user() {
 	local username=$1
 	[[ "$username" =~ ^[a-z_][a-z0-9_-]*$ ]] || return 1
@@ -92,8 +95,8 @@ sst_valid_site_user() {
 	return 0
 }
 
-# New site-owner account: private home (0750) so other Unix users cannot browse
-# ~/Maildir. nginx is later added to this user's group to read ~/www.
+# Owner-group account: private home (0750) so other Unix users cannot browse
+# this group's ~/www or ~/Maildir. nginx is later added to this user's group.
 sst_ensure_site_user() {
 	local username=$1
 	if ! sst_valid_site_user "$username"; then
@@ -103,7 +106,7 @@ sst_ensure_site_user() {
 		echo "Creating system user '${username}' (home will be mode 0750)."
 		adduser "$username" || sst_die "adduser ${username} failed."
 	fi
-	# Existing accounts too: other site users should not browse ~/Maildir.
+	# Existing accounts too: other owner-groups should not browse this home.
 	if [[ -d "/home/${username}" ]]; then
 		chmod 0750 "/home/${username}" || true
 	fi

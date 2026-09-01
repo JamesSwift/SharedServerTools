@@ -40,7 +40,7 @@ service nginx restart || sst_die "nginx restart failed."
 echo "Domain deleted. Mail aliases in ${SST_EXIM_VIRTUAL}/${domain} (if any) were left in place."
 echo
 
-read -p "Do you wish to delete user '$username' who owns this domain? (WARNING: they may have other active domains and ~/Maildir!) [N/y]" -n 1 -r
+read -p "Do you wish to delete user '$username' who owns this domain? (WARNING: they may own other sites and all of this group's mail in ~/Maildir!) [N/y]" -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
 	rm -f "$(sst_php_fpm_pool_dir)/${username}.conf"

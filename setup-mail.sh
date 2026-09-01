@@ -20,8 +20,9 @@ echo
 echo "This configures Ubuntu's split Exim4 config (/etc/exim4/conf.d + update-exim4.conf),"
 echo "Dovecot 2.4 IMAP/POP3, and SpamAssassin (spamd)."
 echo
-echo "Mail is per Unix user (~/Maildir), not a shared vmail account. Exim and Dovecot"
-echo "stay as the usual shared daemons — enough isolation for a trusted-admin box."
+echo "Mail is stored per owner-group Unix user (~/Maildir), not a shared vmail"
+echo "account and not one Unix user per domain. Exim and Dovecot stay as the usual"
+echo "shared daemons — enough isolation for a trusted-admin box."
 echo
 echo "Target: Ubuntu 26.04 LTS, Exim 4.99, Dovecot 2.4, PHP ${PHP_VERSION}."
 echo "This host reports Ubuntu ${OS_ID}."
@@ -206,7 +207,7 @@ sst_ensure_dkim "${HOSTNAME_FULL}" "${HOSTNAME_SHORT}"
 
 echo "Mail setup is complete."
 echo
-echo "IMAP/POP3: Dovecot on 993/995 (TLS required), system user accounts."
+echo "IMAP/POP3: Dovecot on 993/995 (TLS required), Unix user accounts (one user per owner-group)."
 echo "SMTP submission: Exim on 587 (STARTTLS) and 465 (implicit TLS)."
 echo "Virtual aliases: /etc/exim4/virtual/<domain>  (see add-email-domain.sh)"
 echo
