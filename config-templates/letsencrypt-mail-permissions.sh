@@ -15,7 +15,7 @@ fi
 if [[ -d "/etc/letsencrypt/archive/${HOSTNAME_FULL}" ]]; then
 	chown -R root:Debian-exim "/etc/letsencrypt/archive/${HOSTNAME_FULL}"
 	chmod g+s "/etc/letsencrypt/archive/${HOSTNAME_FULL}"
-	chmod 640 /etc/letsencrypt/archive/${HOSTNAME_FULL}/privkey*.pem 2>/dev/null || true
+	chmod 640 "/etc/letsencrypt/archive/${HOSTNAME_FULL}"/privkey*.pem 2>/dev/null || true
 fi
 
 if [[ -d "/etc/letsencrypt/live/${HOSTNAME_FULL}" ]]; then

@@ -1,10 +1,27 @@
 #!/bin/bash
 # Shared helpers for SharedServerTools scripts. Source this file; do not execute it.
+#
+# Isolation model (everyone on the box is trusted, but users should not
+# casually read each other's files):
+#   - One Unix user per site owner; PHP-FPM pool and ~/www run as that user.
+#   - Mail for that owner is ~/Maildir (mode 0700), not a shared vmail account.
+#   - Virtual domains are alias files that redirect to user@localhost.
+#   - nginx is in the site user's group so it can read static files (0750 home).
+
+# Override these before sourcing if you ever relocate Debian's layout.
+: "${SST_EXIM_VIRTUAL:=/etc/exim4/virtual}"
+: "${SST_EXIM_DKIM:=/etc/exim4/dkim}"
+: "${SST_NGINX_AVAILABLE:=/etc/nginx/sites-available}"
+: "${SST_NGINX_ENABLED:=/etc/nginx/sites-enabled}"
+
+sst_die() {
+	echo "ERROR: $*" >&2
+	exit 1
+}
 
 sst_require_root() {
 	if [[ $EUID -ne 0 ]]; then
-		echo "This script must be run as root." >&2
-		exit 1
+		sst_die "This script must be run as root (sudo $0)."
 	fi
 }
 
@@ -63,6 +80,33 @@ sst_add_admin_groups() {
 			usermod -aG "$group" "$username"
 		fi
 	done
+}
+
+# Site owners: letters, digits, _ and - only. Not system/mail daemon names.
+sst_valid_site_user() {
+	local username=$1
+	[[ "$username" =~ ^[a-z_][a-z0-9_-]*$ ]] || return 1
+	case "$username" in
+		root|www-data|Debian-exim|dovecot|debian-spamd|nobody|sync) return 1 ;;
+	esac
+	return 0
+}
+
+# New site-owner account: private home (0750) so other Unix users cannot browse
+# ~/Maildir. nginx is later added to this user's group to read ~/www.
+sst_ensure_site_user() {
+	local username=$1
+	if ! sst_valid_site_user "$username"; then
+		sst_die "Refusing username '${username}'. Use a simple name like 'james' (not root/www-data)."
+	fi
+	if ! getent passwd "$username" >/dev/null; then
+		echo "Creating system user '${username}' (home will be mode 0750)."
+		adduser "$username" || sst_die "adduser ${username} failed."
+	fi
+	# Existing accounts too: other site users should not browse ~/Maildir.
+	if [[ -d "/home/${username}" ]]; then
+		chmod 0750 "/home/${username}" || true
+	fi
 }
 
 replace_config_param() {
@@ -141,7 +185,7 @@ sst_init_vars() {
 }
 
 sst_mail_enabled() {
-	[[ -f /etc/exim4/update-exim4.conf.conf ]] && [[ -d /etc/exim4/virtual ]]
+	[[ -f /etc/exim4/update-exim4.conf.conf ]] && [[ -d "${SST_EXIM_VIRTUAL}" ]]
 }
 
 # Print the DKIM/SPF/DMARC records for an existing key directory.
@@ -150,8 +194,8 @@ sst_print_mail_dns() {
 	local selector=${2:-$(hostname)}
 	local pubkey=""
 
-	if [[ -f "/etc/exim4/dkim/${domain}/dkim.public" ]]; then
-		pubkey=$(sed '1d;$d' "/etc/exim4/dkim/${domain}/dkim.public" | tr -d '\n')
+	if [[ -f "${SST_EXIM_DKIM}/${domain}/dkim.public" ]]; then
+		pubkey=$(sed '1d;$d' "${SST_EXIM_DKIM}/${domain}/dkim.public" | tr -d '\n')
 	fi
 
 	echo
@@ -174,26 +218,26 @@ sst_ensure_dkim() {
 	local domain=$1
 	local selector=${2:-$(hostname)}
 
-	mkdir -p "/etc/exim4/dkim/${domain}"
+	mkdir -p "${SST_EXIM_DKIM}/${domain}"
 
 	# Pre-Aug-2020 SST used flat /etc/exim4/dkim/<domain>.private files.
-	if [[ -f "/etc/exim4/dkim/${domain}.private" ]] && [[ ! -f "/etc/exim4/dkim/${domain}/dkim.private" ]]; then
-		echo "Migrating flat DKIM key /etc/exim4/dkim/${domain}.private into ${domain}/dkim.private"
-		cp -a "/etc/exim4/dkim/${domain}.private" "/etc/exim4/dkim/${domain}/dkim.private"
-		if [[ -f "/etc/exim4/dkim/${domain}.public" ]]; then
-			cp -a "/etc/exim4/dkim/${domain}.public" "/etc/exim4/dkim/${domain}/dkim.public"
+	if [[ -f "${SST_EXIM_DKIM}/${domain}.private" ]] && [[ ! -f "${SST_EXIM_DKIM}/${domain}/dkim.private" ]]; then
+		echo "Migrating flat DKIM key ${SST_EXIM_DKIM}/${domain}.private into ${domain}/dkim.private"
+		cp -a "${SST_EXIM_DKIM}/${domain}.private" "${SST_EXIM_DKIM}/${domain}/dkim.private"
+		if [[ -f "${SST_EXIM_DKIM}/${domain}.public" ]]; then
+			cp -a "${SST_EXIM_DKIM}/${domain}.public" "${SST_EXIM_DKIM}/${domain}/dkim.public"
 		fi
 	fi
 
-	if [[ -f "/etc/exim4/dkim/${domain}/dkim.public" ]]; then
+	if [[ -f "${SST_EXIM_DKIM}/${domain}/dkim.public" ]]; then
 		echo "DKIM keys were previously generated for this domain."
 		echo
 		echo "If you experience issues sending mail, please ensure the following entries are in your DNS record for ${domain}"
 	else
 		echo "Generating a DKIM key for sending emails for this domain from this server."
 		echo
-		openssl genrsa -out "/etc/exim4/dkim/${domain}/dkim.private" 2048 >/dev/null 2>&1
-		openssl rsa -in "/etc/exim4/dkim/${domain}/dkim.private" -out "/etc/exim4/dkim/${domain}/dkim.public" -pubout -outform PEM
+		openssl genrsa -out "${SST_EXIM_DKIM}/${domain}/dkim.private" 2048 >/dev/null 2>&1
+		openssl rsa -in "${SST_EXIM_DKIM}/${domain}/dkim.private" -out "${SST_EXIM_DKIM}/${domain}/dkim.public" -pubout -outform PEM
 		echo
 		echo "DKIM is a way of proving which servers have permission to send email for a domain."
 		echo "Email clients check for a DKIM DNS record when determining if a message is spam."
@@ -201,9 +245,11 @@ sst_ensure_dkim() {
 		echo "Please add the following entries to your DNS record for ${domain}"
 	fi
 
-	chown -R root:Debian-exim "/etc/exim4/dkim/${domain}"
-	chmod -R 770 "/etc/exim4/dkim/${domain}"
-	chmod 640 "/etc/exim4/dkim/${domain}/dkim.private"
+	# root:Debian-exim, not world-readable. Site users are not in Debian-exim.
+	chown -R root:Debian-exim "${SST_EXIM_DKIM}/${domain}"
+	chmod 750 "${SST_EXIM_DKIM}" "${SST_EXIM_DKIM}/${domain}"
+	chmod 640 "${SST_EXIM_DKIM}/${domain}/dkim.private"
+	chmod 644 "${SST_EXIM_DKIM}/${domain}/dkim.public" 2>/dev/null || true
 
 	sst_print_mail_dns "$domain" "$selector"
 }
@@ -214,18 +260,18 @@ sst_ensure_virtual_domain() {
 	local domain=$1
 	local username=${2:-}
 
-	mkdir -p /etc/exim4/virtual
-	chown root:Debian-exim /etc/exim4/virtual
-	chmod 770 /etc/exim4/virtual
+	mkdir -p "${SST_EXIM_VIRTUAL}"
+	chown root:Debian-exim "${SST_EXIM_VIRTUAL}"
+	chmod 750 "${SST_EXIM_VIRTUAL}"
 
-	if [[ ! -f "/etc/exim4/virtual/${domain}" ]]; then
+	if [[ ! -f "${SST_EXIM_VIRTUAL}/${domain}" ]]; then
 		if [[ -n "$username" ]]; then
-			echo "postmaster : ${username}@localhost" > "/etc/exim4/virtual/${domain}"
+			echo "postmaster : ${username}@localhost" > "${SST_EXIM_VIRTUAL}/${domain}"
 		else
-			touch "/etc/exim4/virtual/${domain}"
+			touch "${SST_EXIM_VIRTUAL}/${domain}"
 		fi
-		chown root:Debian-exim "/etc/exim4/virtual/${domain}"
-		chmod 770 "/etc/exim4/virtual/${domain}"
+		chown root:Debian-exim "${SST_EXIM_VIRTUAL}/${domain}"
+		chmod 640 "${SST_EXIM_VIRTUAL}/${domain}"
 		if command -v systemctl >/dev/null 2>&1; then
 			systemctl reload exim4 2>/dev/null || service exim4 reload 2>/dev/null || true
 		fi

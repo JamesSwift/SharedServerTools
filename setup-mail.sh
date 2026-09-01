@@ -20,6 +20,9 @@ echo
 echo "This configures Ubuntu's split Exim4 config (/etc/exim4/conf.d + update-exim4.conf),"
 echo "Dovecot 2.4 IMAP/POP3, and SpamAssassin (spamd)."
 echo
+echo "Mail is per Unix user (~/Maildir), not a shared vmail account. Exim and Dovecot"
+echo "stay as the usual shared daemons — enough isolation for a trusted-admin box."
+echo
 echo "Target: Ubuntu 26.04 LTS, Exim 4.99, Dovecot 2.4, PHP ${PHP_VERSION}."
 echo "This host reports Ubuntu ${OS_ID}."
 echo "From-version for existing SST mail boxes is Ubuntu 20.04 (Exim 4.93, Dovecot 2.3, PHP 7.4)."
@@ -125,9 +128,9 @@ echo "Done"
 echo
 
 echo "Setting up Exim4 (split config):"
-mkdir -p /etc/exim4/virtual /etc/exim4/dkim /etc/exim4/conf.d/main /etc/exim4/conf.d/acl /etc/exim4/conf.d/router /etc/exim4/conf.d/auth
-chown -R root:Debian-exim /etc/exim4/dkim /etc/exim4/virtual
-chmod -R 770 /etc/exim4/dkim /etc/exim4/virtual
+mkdir -p "${SST_EXIM_VIRTUAL}" "${SST_EXIM_DKIM}" /etc/exim4/conf.d/main /etc/exim4/conf.d/acl /etc/exim4/conf.d/router /etc/exim4/conf.d/auth
+chown root:Debian-exim "${SST_EXIM_DKIM}" "${SST_EXIM_VIRTUAL}"
+chmod 750 "${SST_EXIM_DKIM}" "${SST_EXIM_VIRTUAL}"
 
 sst_ensure_virtual_domain "${HOSTNAME_FULL}"
 
@@ -158,7 +161,7 @@ fi
 if [[ -d "/etc/letsencrypt/archive/${HOSTNAME_FULL}" ]]; then
 	chown -R root:Debian-exim "/etc/letsencrypt/archive/${HOSTNAME_FULL}"
 	chmod g+s "/etc/letsencrypt/archive/${HOSTNAME_FULL}"
-	chmod 640 /etc/letsencrypt/archive/${HOSTNAME_FULL}/privkey*.pem 2>/dev/null || true
+	chmod 640 "/etc/letsencrypt/archive/${HOSTNAME_FULL}"/privkey*.pem 2>/dev/null || true
 fi
 if [[ -d "/etc/letsencrypt/live/${HOSTNAME_FULL}" ]]; then
 	chown -R root:Debian-exim "/etc/letsencrypt/live/${HOSTNAME_FULL}"

@@ -44,5 +44,7 @@ IGNORE_SMTP_LINE_LENGTH_LIMIT = 1
 # SMTP AUTH submissions are still restricted by acl_check_sender.
 MAIN_TRUSTED_GROUPS = sudo
 
-# Create ~/Maildir on first delivery if it does not exist.
+# Create ~/Maildir on first delivery. 0700 so other Unix users cannot read mail.
 MAILDIR_HOME_CREATE_DIRECTORY = 1
+MAILDIR_HOME_DIRECTORY_MODE = 0700
+MAILDIR_HOME_MODE = 0600

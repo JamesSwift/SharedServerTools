@@ -55,6 +55,15 @@ fi
 echo "OK   Exim templates use dsearch / \$domain_data"
 
 echo
+echo "== templates: Maildir isolation modes =="
+if ! grep -q 'MAILDIR_HOME_DIRECTORY_MODE = 0700' "$ROOT"/config-templates/00_local_macros; then
+	echo "FAIL: Maildir directory mode should be 0700"
+	fail=1
+else
+	echo "OK   MAILDIR_HOME_DIRECTORY_MODE = 0700"
+fi
+
+echo
 echo "== placeholders =="
 if grep -R '__[A-Z0-9_]*__' "$ROOT"/config-templates/00_local_macros \
 	"$ROOT"/config-templates/99-sharedservertools-dovecot.conf \

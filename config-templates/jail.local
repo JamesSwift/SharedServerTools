@@ -1,3 +1,6 @@
+# SharedServerTools fail2ban: ssh, nginx, smtp (exim), imap/pop (dovecot).
+# Stock Ubuntu filters. Enough for a trusted-admin box; not a policy framework.
+
 [DEFAULT]
 ignoreip = 127.0.0.1/8 ::1
 

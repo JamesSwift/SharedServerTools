@@ -89,3 +89,15 @@ If `10-ssl.conf` still contains `ssl_cert = <` after upgrade, move the SST copie
 9. Re-print DNS with `add-email-domain.sh` (selector is still the short hostname). MX/SPF/DKIM should stay valid if keys were copied.
 
 `initial-setup.sh` on a host that already has years of nginx/php/mail drift will still rewrite nginx, php, fail2ban, and hosts from templates. Prefer `setup-mail.sh` plus manual web-stack fixes over a full `initial-setup.sh` replay.
+
+## Permissions / isolation after upgrade
+
+20.04 SST often left site homes world-traversable (0755). This restore keeps the same Unix-user-per-owner model but tightens defaults:
+
+- Site-owner home: **0750** (`add-website.sh` / `sst_ensure_site_user`).
+- `~/Maildir`: **0700** (Exim `MAILDIR_HOME_DIRECTORY_MODE` on first create).
+- `/etc/exim4/virtual/` and `dkim/`: **750**, private keys **640**, `root:Debian-exim` (was 770 on some trees).
+
+Existing 0755 Maildirs are not rewritten automatically. After upgrade, for each mail user: `chmod 0750 /home/USER` and `chmod 0700 /home/USER/Maildir` if that directory already exists.
+
+There is still no per-user Exim/Dovecot daemon. See the README isolation section.

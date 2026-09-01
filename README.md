@@ -18,6 +18,25 @@ Don't worry, the scripts walk you through each change before it is made, nothing
 
 The scripts assume a basic knowledge of server configurations, and they assume you won't intentionally be trying to break anything. They are not meant to be exposed to end-users, and are not hardened for input sanitization.
 
+Interactive scripts (`initial-setup.sh`, `add-website.sh`, `add-email-domain.sh`, `remove-website.sh`) do **not** use `set -e`: a failed optional command would abort in the middle of a prompt. They still exit with a clear `ERROR:` on empty input and on nginx/php/certbot failures. Non-interactive tools (`setup-mail.sh`, backup scripts) use `set -euo pipefail`.
+
+## Isolation (cheap, not multi-tenant)
+
+Everyone on the box is trusted (you / your own businesses). There are no containers, VMs, or SELinux policies. Isolation is ordinary Unix ownership:
+
+- One system user per site owner. PHP-FPM runs as that user. `add-website.sh` creates the account if needed.
+- Mail is that user's `~/Maildir` (directory 0700, files 0600). Virtual domains are alias files (`info : james@localhost`), not a second identity system and not a shared `vmail` Unix user.
+- Site-owner homes are mode **0750**. nginx (`www-data`) is added to the site user's group so it can read `~/www`. Other site users cannot browse `~/Maildir`.
+- `/etc/exim4/virtual/` and `/etc/exim4/dkim/` are `root:Debian-exim` with directory 750 / private keys 640.
+
+Remaining gaps (accepted for now; decide later if they matter):
+
+- Exim and Dovecot remain **shared daemons**. Per-user data is isolated; the processes are not.
+- PHP `mail()` / `/usr/sbin/sendmail` is not covered by the SMTP AUTH `From:` ACL (`acl_check_sender`). A site user can set an arbitrary envelope sender on local injection.
+- `www-data` is in every site user's group (required for nginx). Group-readable files in any site home are readable by the web server.
+- Editing `/etc/exim4/virtual/<domain>` as root can alias mail to any local user.
+- No mailbox quotas.
+
 ## Version assumptions (September 2026)
 
 | | From (production SST boxes) | To (this repo) |

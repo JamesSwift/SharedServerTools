@@ -1,4 +1,5 @@
 #!/bin/bash
+# Interactive: do not use set -e (prompts + optional lookups).
 
 . "$(dirname "$(realpath "$0")")/tools/sst-lib.sh"
 sst_require_root
@@ -10,30 +11,48 @@ echo "============================="
 echo
 
 if ! sst_mail_enabled; then
-	echo "Mail is not configured on this server yet."
-	echo "Run ./setup-mail.sh (or re-run initial-setup.sh and enable mail) first."
-	exit 1
+	sst_die "Mail is not configured yet. Run ${SCRIPT_DIR}/setup-mail.sh first (or initial-setup.sh and enable mail)."
 fi
 
-echo "This script lets you add a new domain to Exim. If you have already added a domain, you can see the DKIM settings for it by running this script again."
+echo "This adds a domain to Exim (virtual aliases + DKIM)."
+echo "Mail is stored in the Unix user's ~/Maildir, not a shared vmail account."
+echo "If you already added this domain, run this again to reprint DNS records."
 echo
 echo "Please enter the domain name (excluding www):"
 read -r domain
 
 domain=$(echo "$domain" | tr '[:upper:]' '[:lower:]')
-
 if [[ -z "$domain" ]]; then
-	echo "No domain entered."
-	exit 1
+	sst_die "No domain entered."
+fi
+
+echo
+echo "Which local Unix user should receive mail for this domain?"
+echo "(IMAP login = that user. Leave blank only if you will edit ${SST_EXIM_VIRTUAL}/${domain} yourself.)"
+read -r mail_user
+
+if [[ -n "$mail_user" ]]; then
+	if ! getent passwd "$mail_user" >/dev/null; then
+		sst_die "User '${mail_user}' does not exist. Create them with add-website.sh or adduser first."
+	fi
+	if ! sst_valid_site_user "$mail_user"; then
+		echo "WARNING: '${mail_user}' is a special/system name. Continuing, but prefer a site-owner account."
+	fi
+	if [[ -d "/home/${mail_user}" ]]; then
+		chmod 0750 "/home/${mail_user}" || true
+	fi
 fi
 
 sst_ensure_dkim "$domain"
-sst_ensure_virtual_domain "$domain"
+sst_ensure_virtual_domain "$domain" "${mail_user:-}"
 
 echo
-echo "To setup routing from addresses at this domain to local users edit the file: /etc/exim4/virtual/${domain}"
-echo
-echo "For example to send info@${domain} to local user james add the following:"
-echo
-echo "info : james@localhost"
+echo "Alias file: ${SST_EXIM_VIRTUAL}/${domain}"
+if [[ -n "$mail_user" ]]; then
+	echo "postmaster@${domain} -> ${mail_user}@localhost  (~${mail_user}/Maildir)"
+	echo "Add more lines like:  info : ${mail_user}@localhost"
+else
+	echo "The file is empty. Example to deliver to local user james:"
+	echo "  info : james@localhost"
+fi
 echo
