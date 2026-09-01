@@ -99,6 +99,61 @@ else
 fi
 
 echo
+echo "== templates: SA junk router / transport / tag threshold =="
+sa_router="$ROOT/config-templates/550_exim4-config_sa_junk"
+sa_transport="$ROOT/config-templates/30_exim4-config_maildir_junk"
+if [[ -f "$sa_router" ]] && grep -q 'driver = accept' "$sa_router" \
+	&& grep -q 'domains = +local_domains' "$sa_router" \
+	&& grep -q 'check_local_user' "$sa_router" \
+	&& grep -q 'local_parts = ! root' "$sa_router" \
+	&& grep -q 'eqi' "$sa_router" \
+	&& grep -q 'X-SA-Status' "$sa_router" \
+	&& grep -q 'transport = maildir_junk' "$sa_router"; then
+	echo "OK   sa_junk router files X-SA-Status Yes via maildir_junk"
+else
+	echo "FAIL: 550_exim4-config_sa_junk must accept local users (not root) when X-SA-Status is Yes"
+	fail=1
+fi
+if [[ -f "$sa_transport" ]] && grep -q 'driver = appendfile' "$sa_transport" \
+	&& grep -q 'maildir_format' "$sa_transport" \
+	&& grep -q 'create_directory' "$sa_transport" \
+	&& grep -q 'directory = $home/Maildir/.Junk' "$sa_transport" \
+	&& grep -q 'MAILDIR_HOME_DIRECTORY_MODE' "$sa_transport" \
+	&& grep -q 'MAILDIR_HOME_MODE' "$sa_transport" \
+	&& grep -q 'mode_fail_narrower = false' "$sa_transport"; then
+	echo "OK   maildir_junk delivers to \$home/Maildir/.Junk"
+else
+	echo "FAIL: maildir_junk transport must clone maildir_home into Maildir/.Junk"
+	fail=1
+fi
+if grep -q 'spam_score_int}{30}' "$ROOT"/config-templates/check_data_acl \
+	&& grep -q 'X-SA-Status: Yes' "$ROOT"/config-templates/check_data_acl \
+	&& grep -q 'spam_score_int}{70}' "$ROOT"/config-templates/check_data_acl \
+	&& ! grep -q 'spam_score_int}{50}' "$ROOT"/config-templates/check_data_acl; then
+	echo "OK   check_data_acl tags at 3.0 and rejects at 7.0"
+else
+	echo "FAIL: X-SA-Status Yes at 30 (3.0); reject still at 70 (7.0)"
+	fail=1
+fi
+if grep -q '550_exim4-config_sa_junk' "$ROOT"/setup-mail.sh \
+	&& grep -q '30_exim4-config_maildir_junk' "$ROOT"/setup-mail.sh \
+	&& grep -q 'conf.d/transport' "$ROOT"/setup-mail.sh; then
+	echo "OK   setup-mail.sh installs sa_junk router and transport"
+else
+	echo "FAIL: setup-mail.sh must apply_template the junk router and transport"
+	fail=1
+fi
+if grep -q '[.]forward' "$ROOT"/README.md || grep -q 'Maildir/.Spam' "$ROOT"/README.md; then
+	echo "FAIL: README must not require ~/.forward or Maildir/.Spam"
+	fail=1
+elif grep -q 'Maildir/.Junk' "$ROOT"/README.md; then
+	echo "OK   README files tagged spam into Maildir/.Junk (no ~/.forward)"
+else
+	echo "FAIL: README should mention Maildir/.Junk"
+	fail=1
+fi
+
+echo
 echo "== templates: Maildir modes =="
 if ! grep -q 'MAILDIR_HOME_DIRECTORY_MODE = 0700' "$ROOT"/config-templates/00_local_macros; then
 	echo "FAIL: Maildir directory mode should be 0700"

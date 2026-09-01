@@ -1,0 +1,10 @@
+# File X-SA-Status: Yes into Maildir/.Junk before userforward
+# so tagged spam is not forwarded off-box.
+
+sa_junk:
+  driver = accept
+  domains = +local_domains
+  check_local_user
+  local_parts = ! root
+  condition = ${if eqi{$h_X-SA-Status:}{Yes}}
+  transport = maildir_junk
