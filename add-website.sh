@@ -135,6 +135,7 @@ else
 	service "$(sst_php_fpm_service)" reload || sst_die "php-fpm reload failed."
 	echo "Reloading nginx configuration:"
 	service nginx reload || sst_die "nginx reload failed. Check: nginx -t"
+	sst_fail2ban_reload_nginx
 fi
 
 read -p "Do you wish to enable SSL for this domain? [Y/n]" -n 1 -r
@@ -143,10 +144,12 @@ if [[ $REPLY =~ ^[Nn]$ ]]; then
 	echo "Turning off SSL:"
 	sed -i '/#__COMMENT_LINE__/s/^/#__COMMENT__/g' "${SST_NGINX_AVAILABLE}/${domain}"
 	service nginx reload || sst_die "nginx reload failed."
+	sst_fail2ban_reload_nginx
 else
 	echo "Turning off SSL while obtaining certificate:"
 	sed -i '/#__COMMENT_LINE__/s/^/#__COMMENT__/g' "${SST_NGINX_AVAILABLE}/${domain}"
 	service nginx reload || sst_die "nginx reload failed."
+	sst_fail2ban_reload_nginx
 
 	echo "Obtaining ssl certificate:"
 	read -p "Do you want to obtain an ssl certificate for www.${domain} as well as ${domain}? [Y/n]" -n 1 -r
@@ -164,6 +167,7 @@ else
 
 	echo "Reloading nginx:"
 	service nginx reload || sst_die "nginx reload failed after installing the certificate."
+	sst_fail2ban_reload_nginx
 fi
 
 if sst_mail_enabled; then

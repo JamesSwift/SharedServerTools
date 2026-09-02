@@ -276,6 +276,22 @@ if grep -R '__[A-Z0-9_]*__' "$ROOT"/config-templates/00_local_macros \
 fi
 
 echo
+echo "== templates: fail2ban nginx jails watch per-site logs =="
+jail_local="$ROOT/config-templates/jail.local"
+if grep -A20 '^\[nginx-botsearch\]' "$jail_local" | grep -q '/home/\*/www/\*\.access\.log'; then
+	echo "OK   nginx-botsearch logpath includes /home/*/www/*.access.log"
+else
+	echo "FAIL: nginx-botsearch logpath must include /home/*/www/*.access.log"
+	fail=1
+fi
+if grep -A10 '^\[nginx-forbidden\]' "$jail_local" | grep -q '^enabled = true'; then
+	echo "OK   nginx-forbidden is enabled"
+else
+	echo "FAIL: nginx-forbidden must be enabled"
+	fail=1
+fi
+
+echo
 echo "== site user: www-data group is reversed before userdel =="
 if grep -q 'usermod -aG "$username" www-data' "$ROOT"/tools/sst-lib.sh \
 	&& grep -q 'sst_nginx_join_owner_group' "$ROOT"/add-website.sh; then

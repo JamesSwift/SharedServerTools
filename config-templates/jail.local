@@ -17,6 +17,20 @@ enabled = true
 
 [nginx-botsearch]
 enabled = true
+bantime  = 1h
+logpath  = /var/log/nginx/access.log
+           /home/*/www/*.access.log
 
 [nginx-http-auth]
 enabled = true
+bantime  = 1h
+logpath  = /var/log/nginx/error.log
+           /home/*/www/*.error.log
+
+[nginx-forbidden]
+enabled = true
+bantime  = 1h
+findtime = 1h
+maxretry = 3
+logpath  = /var/log/nginx/error.log
+           /home/*/www/*.error.log

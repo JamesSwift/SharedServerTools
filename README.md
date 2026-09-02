@@ -1,9 +1,9 @@
-# SharedServerTools v0.4.1
+# SharedServerTools v0.4.2
 Interactive scripts to turn a fresh ubuntu 26.04 install into a manageable, secured, multi-domain web and email server.
 
 These scripts perform common setup steps, including:
 - setting up hostname and ip addresses
-- installing fail2ban to monitor and block attacks
+- installing fail2ban to monitor and block attacks, including per-site nginx logs
 - running each website as a specified system user
 - acquiring and installing SSL certificates for each domain
 - hardening SSL parameters
