@@ -1,4 +1,4 @@
-# SharedServerTools v0.4.0
+# SharedServerTools v0.4.1
 Interactive scripts to turn a fresh ubuntu 26.04 install into a manageable, secured, multi-domain web and email server.
 
 These scripts perform common setup steps, including:
@@ -69,6 +69,8 @@ also create the dkim files to sign outgoing messages.
 Inbound mail is scanned with SpamAssassin. Exim files messages tagged
 X-SA-Status: Yes into the user's existing Junk/Spam folder (Junk is created
 if none). Tag at 3.0; reject at 7.0.
+IMAP mark-as-spam (move to Junk/Spam) trains Bayes; move back to inbox
+trains ham. Bayes starts scoring after ~200 spam and ~200 ham.
 Junk/Spam and Trash/Bin older than 30 days are deleted.
 
 
