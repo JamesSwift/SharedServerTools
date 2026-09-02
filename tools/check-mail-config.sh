@@ -212,7 +212,10 @@ if [[ -f "$ROOT/config-templates/report-spam.sieve" ]] \
 	&& grep -q 'pipe :copy "sa-learn-spam.sh"' "$ROOT"/config-templates/report-spam.sieve \
 	&& grep -q 'Trash' "$ROOT"/config-templates/report-ham.sieve \
 	&& grep -q 'pipe :copy "sa-learn-ham.sh"' "$ROOT"/config-templates/report-ham.sieve \
-	&& grep -q -- '--dbpath' "$ROOT"/config-templates/sa-learn-spam.sh \
+	&& grep -q '^dbpath=/var/lib/spamassassin/.spamassassin$' "$ROOT"/config-templates/sa-learn-spam.sh \
+	&& grep -q '^dbpath=/var/lib/spamassassin/.spamassassin$' "$ROOT"/config-templates/sa-learn-ham.sh \
+	&& ! grep -q '/var/lib/spamassassin/.spamassassin/bayes' "$ROOT"/config-templates/sa-learn-spam.sh \
+	&& ! grep -q '/var/lib/spamassassin/.spamassassin/bayes' "$ROOT"/config-templates/sa-learn-ham.sh \
 	&& grep -q -- '--spam' "$ROOT"/config-templates/sa-learn-spam.sh \
 	&& ! grep -q '/root/.spamassassin' "$ROOT"/config-templates/sa-learn-spam.sh; then
 	echo "OK   report-spam.sieve / sa-learn-spam.sh exist as templates"
@@ -224,7 +227,11 @@ learn_job="$ROOT/config-templates/sst-sa-learn-junk"
 if [[ -f "$learn_job" ]] \
 	&& grep -q '/home/\*/Maildir' "$learn_job" \
 	&& grep -q -- '--spam' "$learn_job" \
-	&& grep -q -- '--dbpath' "$learn_job" \
+	&& grep -q '^DBPATH=/var/lib/spamassassin/.spamassassin$' "$learn_job" \
+	&& ! grep -q '/var/lib/spamassassin/.spamassassin/bayes' "$learn_job" \
+	&& grep -q -- '--dbpath /var/lib/spamassassin/.spamassassin --spam' "$ROOT"/config-templates/sst-sa-learn-sudoers \
+	&& grep -q -- '--dbpath /var/lib/spamassassin/.spamassassin --ham' "$ROOT"/config-templates/sst-sa-learn-sudoers \
+	&& ! grep -q '/var/lib/spamassassin/.spamassassin/bayes' "$ROOT"/config-templates/sst-sa-learn-sudoers \
 	&& grep -q 'junk|spam' "$learn_job" \
 	&& ! grep -q 'expunge -A' "$learn_job" \
 	&& ! grep -qE '^[^#]*doveadm -A' "$learn_job" \

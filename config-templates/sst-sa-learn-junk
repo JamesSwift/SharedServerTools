@@ -6,7 +6,7 @@
 [ -x /usr/bin/sa-learn ] || exit 0
 [ -x /usr/bin/doveadm ] || exit 0
 
-DBPATH=/var/lib/spamassassin/.spamassassin/bayes
+DBPATH=/var/lib/spamassassin/.spamassassin
 
 for maildir in /home/*/Maildir; do
 	[ -d "$maildir" ] || continue

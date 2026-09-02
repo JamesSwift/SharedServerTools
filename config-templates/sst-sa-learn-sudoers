@@ -1,5 +1,5 @@
 # SharedServerTools: IMAP vnd.dovecot.pipe runs as the mailbox owner.
 # sa-learn must run as root to write the shared Bayes DB.
 Defaults!/usr/bin/sa-learn !requiretty
-Cmnd_Alias SST_SA_LEARN = /usr/bin/sa-learn --dbpath /var/lib/spamassassin/.spamassassin/bayes --spam, /usr/bin/sa-learn --dbpath /var/lib/spamassassin/.spamassassin/bayes --ham
+Cmnd_Alias SST_SA_LEARN = /usr/bin/sa-learn --dbpath /var/lib/spamassassin/.spamassassin --spam, /usr/bin/sa-learn --dbpath /var/lib/spamassassin/.spamassassin --ham
 ALL ALL=(root) NOPASSWD: SST_SA_LEARN
