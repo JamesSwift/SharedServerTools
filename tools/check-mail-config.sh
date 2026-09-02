@@ -231,6 +231,8 @@ if [[ -f "$learn_job" ]] \
 	&& ! grep -q '/var/lib/spamassassin/.spamassassin/bayes' "$learn_job" \
 	&& grep -q -- '--dbpath /var/lib/spamassassin/.spamassassin --spam' "$ROOT"/config-templates/sst-sa-learn-sudoers \
 	&& grep -q -- '--dbpath /var/lib/spamassassin/.spamassassin --ham' "$ROOT"/config-templates/sst-sa-learn-sudoers \
+	&& grep -q 'NOPASSWD' "$ROOT"/config-templates/sst-sa-learn-sudoers \
+	&& ! grep -q 'requiretty' "$ROOT"/config-templates/sst-sa-learn-sudoers \
 	&& ! grep -q '/var/lib/spamassassin/.spamassassin/bayes' "$ROOT"/config-templates/sst-sa-learn-sudoers \
 	&& grep -q 'junk|spam' "$learn_job" \
 	&& ! grep -q 'expunge -A' "$learn_job" \
