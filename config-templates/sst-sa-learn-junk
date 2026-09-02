@@ -1,0 +1,32 @@
+#!/bin/sh
+# Train Bayes as spam from existing Junk/Spam/my spam/my junk.
+# Only unix users with /home/*/Maildir (not doveadm -A / system accounts).
+# Do not learn INBOX as ham. Installed as /etc/cron.daily/sst-sa-learn-junk.
+
+[ -x /usr/bin/sa-learn ] || exit 0
+[ -x /usr/bin/doveadm ] || exit 0
+
+DBPATH=/var/lib/spamassassin/.spamassassin/bayes
+
+for maildir in /home/*/Maildir; do
+	[ -d "$maildir" ] || continue
+	user=$(basename "$(dirname "$maildir")")
+	[ -n "$user" ] || continue
+
+	doveadm mailbox list -u "$user" 2>/dev/null | while IFS= read -r box; do
+		[ -n "$box" ] || continue
+		lc=$(printf '%s' "$box" | tr '[:upper:]' '[:lower:]')
+		case "$lc" in
+		junk|spam|"my junk"|"my spam")
+			dir="$maildir/.$box"
+			set --
+			[ -d "$dir/cur" ] && set -- "$@" "$dir/cur"
+			[ -d "$dir/new" ] && set -- "$@" "$dir/new"
+			[ $# -gt 0 ] || continue
+			/usr/bin/sa-learn --dbpath "$DBPATH" --spam --no-sync "$@" || true
+			;;
+		esac
+	done
+done
+
+/usr/bin/sa-learn --dbpath "$DBPATH" --sync || true

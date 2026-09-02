@@ -1,0 +1,10 @@
+# SharedServerTools SpamAssassin settings (do not overwrite Debian local.cf).
+
+# Paid Validity lists refuse public resolvers; *_BLOCKED must not add score.
+score RCVD_IN_VALIDITY_RPBL_BLOCKED 0
+score RCVD_IN_VALIDITY_CERTIFIED_BLOCKED 0
+score RCVD_IN_VALIDITY_SAFE_BLOCKED 0
+
+# Same Bayes DB that Debian spamd reads (--helper-home-dir → /var/lib/spamassassin).
+bayes_path /var/lib/spamassassin/.spamassassin/bayes
+bayes_file_mode 0660

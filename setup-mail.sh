@@ -86,6 +86,24 @@ if [[ "$OS_ID" == "26.04" || "$DOVECOT_VER" == 2.4* ]]; then
 fi
 apply_template /etc/dovecot/conf.d/99-sharedservertools.conf 99-sharedservertools-dovecot.conf
 chmod 644 /var/www 2>/dev/null || true
+
+mkdir -p /etc/dovecot/sieve /usr/lib/dovecot/sieve /var/lib/spamassassin/.spamassassin /etc/sudoers.d
+if getent passwd debian-spamd >/dev/null 2>&1; then
+	chown debian-spamd:debian-spamd /var/lib/spamassassin/.spamassassin
+fi
+chmod 750 /var/lib/spamassassin/.spamassassin
+apply_template /etc/dovecot/sieve/report-spam.sieve report-spam.sieve
+apply_template /etc/dovecot/sieve/report-ham.sieve report-ham.sieve
+apply_template /usr/lib/dovecot/sieve/sa-learn-spam.sh sa-learn-spam.sh
+apply_template /usr/lib/dovecot/sieve/sa-learn-ham.sh sa-learn-ham.sh
+chmod 755 /usr/lib/dovecot/sieve/sa-learn-spam.sh /usr/lib/dovecot/sieve/sa-learn-ham.sh
+sievec /etc/dovecot/sieve/report-spam.sieve
+sievec /etc/dovecot/sieve/report-ham.sieve
+apply_template /etc/sudoers.d/sst-sa-learn sst-sa-learn-sudoers
+chmod 440 /etc/sudoers.d/sst-sa-learn
+if command -v visudo >/dev/null 2>&1 && ! visudo -cf /etc/sudoers.d/sst-sa-learn; then
+	sst_die "invalid /etc/sudoers.d/sst-sa-learn"
+fi
 echo "Done"
 echo
 
@@ -93,10 +111,14 @@ echo "Setting up SpamAssassin (spamd):"
 if [[ -f /etc/default/spamd ]]; then
 	apply_template /etc/default/spamd spamd
 fi
+apply_template /etc/spamassassin/99_sst.cf 99_sst.cf
+chmod 644 /etc/spamassassin/99_sst.cf
 if [[ -f /usr/lib/systemd/system/spamd.service ]] || [[ -f /lib/systemd/system/spamd.service ]]; then
 	systemctl enable --now spamd.service
+	systemctl restart spamd.service
 elif [[ -f /usr/lib/systemd/system/spamassassin.service ]] || [[ -f /lib/systemd/system/spamassassin.service ]]; then
 	systemctl enable --now spamassassin.service
+	systemctl restart spamassassin.service
 fi
 if [[ -f /usr/lib/systemd/system/spamassassin-maintenance.timer ]] || [[ -f /lib/systemd/system/spamassassin-maintenance.timer ]]; then
 	systemctl enable --now spamassassin-maintenance.timer
@@ -150,6 +172,8 @@ cp "${SCRIPT_DIR}/config-templates/letsencrypt-mail-permissions.sh" \
 chmod 755 /etc/letsencrypt/renewal-hooks/deploy/sharedservertools-mail.sh
 apply_template /etc/cron.daily/sst-expire-junk sst-expire-junk
 chmod 755 /etc/cron.daily/sst-expire-junk
+apply_template /etc/cron.daily/sst-sa-learn-junk sst-sa-learn-junk
+chmod 755 /etc/cron.daily/sst-sa-learn-junk
 # Replaces the previous filename so re-runs do not stack two daily jobs.
 rm -f /etc/cron.daily/sharedservertools-expire-junk
 

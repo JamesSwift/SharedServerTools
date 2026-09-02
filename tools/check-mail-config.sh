@@ -7,7 +7,9 @@ fail=0
 
 echo "== bash syntax =="
 for f in "$ROOT"/initial-setup.sh "$ROOT"/setup-mail.sh "$ROOT"/add-email-domain.sh \
-	"$ROOT"/add-website.sh "$ROOT"/remove-website.sh "$ROOT"/tools/*.sh; do
+	"$ROOT"/add-website.sh "$ROOT"/remove-website.sh "$ROOT"/tools/*.sh \
+	"$ROOT"/config-templates/sa-learn-spam.sh "$ROOT"/config-templates/sa-learn-ham.sh \
+	"$ROOT"/config-templates/sst-sa-learn-junk "$ROOT"/config-templates/sst-expire-junk; do
 	if ! bash -n "$f"; then
 		echo "FAIL: bash -n $f"
 		fail=1
@@ -176,6 +178,74 @@ if [[ -f "$expire_job" ]] \
 	echo "OK   setup-mail.sh installs one cron.daily sst-expire-junk (Maildir users, no -A)"
 else
 	echo "FAIL: sst-expire-junk must iterate /home/*/Maildir, not doveadm -A, and not stack old cron files"
+	fail=1
+fi
+
+echo
+echo "== templates: IMAP Bayes training / Validity BLOCKED =="
+if grep -q 'imap_sieve' "$dovecot_dropin" \
+	&& grep -q 'mailbox Junk' "$dovecot_dropin" \
+	&& grep -q 'sieve_script report-spam' "$dovecot_dropin" \
+	&& grep -q 'imapsieve_from Junk' "$dovecot_dropin" \
+	&& grep -q 'namespace inbox' "$dovecot_dropin"; then
+	echo "OK   Dovecot drop-in has imap_sieve and mailbox Junk sieve_script"
+else
+	echo "FAIL: Dovecot drop-in must enable imap_sieve and mailbox Junk sieve_script"
+	fail=1
+fi
+sst_cf="$ROOT/config-templates/99_sst.cf"
+if [[ -f "$sst_cf" ]] \
+	&& grep -q 'score RCVD_IN_VALIDITY_RPBL_BLOCKED 0' "$sst_cf" \
+	&& grep -q 'score RCVD_IN_VALIDITY_CERTIFIED_BLOCKED 0' "$sst_cf" \
+	&& grep -q 'score RCVD_IN_VALIDITY_SAFE_BLOCKED 0' "$sst_cf" \
+	&& grep -q 'bayes_path /var/lib/spamassassin/.spamassassin/bayes' "$sst_cf" \
+	&& grep -q 'bayes_file_mode 0660' "$sst_cf"; then
+	echo "OK   99_sst.cf zeros VALIDITY_*_BLOCKED and sets bayes_path"
+else
+	echo "FAIL: 99_sst.cf must zero VALIDITY_*_BLOCKED and set bayes_path"
+	fail=1
+fi
+if [[ -f "$ROOT/config-templates/report-spam.sieve" ]] \
+	&& [[ -f "$ROOT/config-templates/sa-learn-spam.sh" ]] \
+	&& [[ -f "$ROOT/config-templates/report-ham.sieve" ]] \
+	&& [[ -f "$ROOT/config-templates/sa-learn-ham.sh" ]] \
+	&& grep -q 'pipe :copy "sa-learn-spam.sh"' "$ROOT"/config-templates/report-spam.sieve \
+	&& grep -q 'Trash' "$ROOT"/config-templates/report-ham.sieve \
+	&& grep -q 'pipe :copy "sa-learn-ham.sh"' "$ROOT"/config-templates/report-ham.sieve \
+	&& grep -q -- '--dbpath' "$ROOT"/config-templates/sa-learn-spam.sh \
+	&& grep -q -- '--spam' "$ROOT"/config-templates/sa-learn-spam.sh \
+	&& ! grep -q '/root/.spamassassin' "$ROOT"/config-templates/sa-learn-spam.sh; then
+	echo "OK   report-spam.sieve / sa-learn-spam.sh exist as templates"
+else
+	echo "FAIL: report-spam.sieve and sa-learn-spam.sh templates missing or incomplete"
+	fail=1
+fi
+learn_job="$ROOT/config-templates/sst-sa-learn-junk"
+if [[ -f "$learn_job" ]] \
+	&& grep -q '/home/\*/Maildir' "$learn_job" \
+	&& grep -q -- '--spam' "$learn_job" \
+	&& grep -q -- '--dbpath' "$learn_job" \
+	&& grep -q 'junk|spam' "$learn_job" \
+	&& ! grep -q 'expunge -A' "$learn_job" \
+	&& ! grep -qE '^[^#]*doveadm -A' "$learn_job" \
+	&& ! grep -q -- '--ham' "$learn_job" \
+	&& grep -q 'apply_template /etc/cron.daily/sst-sa-learn-junk' "$ROOT"/setup-mail.sh \
+	&& grep -q 'apply_template /etc/spamassassin/99_sst.cf' "$ROOT"/setup-mail.sh \
+	&& grep -q 'sievec /etc/dovecot/sieve/report-spam.sieve' "$ROOT"/setup-mail.sh \
+	&& grep -q 'apply_template /etc/sudoers.d/sst-sa-learn' "$ROOT"/setup-mail.sh \
+	&& [[ -f "$ROOT/config-templates/sst-sa-learn-sudoers" ]] \
+	&& grep -q 'sudo -n' "$ROOT"/config-templates/sa-learn-spam.sh \
+	&& ! grep -qE 'apply_template .*/local\.cf' "$ROOT"/setup-mail.sh; then
+	echo "OK   setup-mail.sh installs sst-sa-learn-junk and 99_sst.cf (not local.cf)"
+else
+	echo "FAIL: setup-mail.sh must install Bayes learn cron and 99_sst.cf without clobbering local.cf"
+	fail=1
+fi
+if grep -q 'trains Bayes' "$ROOT"/README.md \
+	&& grep -q '200 spam' "$ROOT"/README.md; then
+	echo "OK   README documents IMAP Bayes training"
+else
+	echo "FAIL: README Spam Filtering should mention IMAP Bayes training"
 	fail=1
 fi
 
