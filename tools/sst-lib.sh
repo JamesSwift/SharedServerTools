@@ -126,6 +126,17 @@ sst_nginx_join_owner_group() {
 	usermod -aG "$username" www-data
 }
 
+# fail2ban inotify does not pick up newly created log files matching a glob.
+sst_fail2ban_reload_nginx() {
+	if ! command -v fail2ban-client >/dev/null 2>&1; then
+		return 0
+	fi
+	fail2ban-client reload nginx-botsearch nginx-http-auth nginx-forbidden 2>/dev/null \
+		|| systemctl reload fail2ban 2>/dev/null \
+		|| service fail2ban reload 2>/dev/null \
+		|| true
+}
+
 # Reverse sst_nginx_join_owner_group so userdel can remove the group.
 sst_nginx_leave_owner_group() {
 	local username=$1

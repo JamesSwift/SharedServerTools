@@ -36,6 +36,7 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
 fi
 
 service nginx restart || sst_die "nginx restart failed."
+sst_fail2ban_reload_nginx
 
 echo "Domain deleted. Mail aliases in ${SST_EXIM_VIRTUAL}/${domain} (if any) were left in place."
 echo
