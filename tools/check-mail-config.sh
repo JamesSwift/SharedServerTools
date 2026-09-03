@@ -5,6 +5,49 @@ set -euo pipefail
 ROOT=$(dirname "$(dirname "$(realpath "$0")")")
 fail=0
 
+# Joined directory= expansion from an Exim transport (backslash continuations).
+exim_directory_value() {
+	awk '
+		/^[[:space:]]*directory[[:space:]]*=/ {
+			v = $0
+			sub(/^[[:space:]]*directory[[:space:]]*=[[:space:]]*/, "", v)
+			while (v ~ /\\[[:space:]]*$/) {
+				sub(/[[:space:]]*\\[[:space:]]*$/, "", v)
+				if ((getline n) <= 0) break
+				sub(/^[[:space:]]+/, "", n)
+				v = v n
+			}
+			print v
+			exit
+		}
+	' "$1"
+}
+
+# True if the string has balanced { } (never negative, ends at 0, at least one {).
+exim_expansion_braces_ok() {
+	local s="$1"
+	local i c bal=0 seen=0
+	for ((i = 0; i < ${#s}; i++)); do
+		c=${s:i:1}
+		if [[ $c == '{' ]]; then
+			seen=1
+			bal=$((bal + 1))
+		elif [[ $c == '}' ]]; then
+			bal=$((bal - 1))
+			if [[ $bal -lt 0 ]]; then
+				return 1
+			fi
+		fi
+	done
+	[[ $seen -eq 1 && $bal -eq 0 ]]
+}
+
+exim_transport_directory_braces_ok() {
+	local exp
+	exp=$(exim_directory_value "$1")
+	[[ -n "$exp" ]] && exim_expansion_braces_ok "$exp"
+}
+
 echo "== bash syntax =="
 for f in "$ROOT"/initial-setup.sh "$ROOT"/setup-mail.sh "$ROOT"/add-email-domain.sh \
 	"$ROOT"/add-website.sh "$ROOT"/remove-website.sh "$ROOT"/tools/*.sh \
@@ -131,6 +174,53 @@ if [[ -f "$sa_transport" ]] && grep -q 'driver = appendfile' "$sa_transport" \
 else
 	echo "FAIL: maildir_junk must nested-exists existing junk folders, fallback Maildir/.Junk"
 	fail=1
+fi
+# Nested exists{} greps still match a brace-imbalanced leftover; require a
+# balanced directory= expansion (not a fixed closer count).
+if exim_transport_directory_braces_ok "$sa_transport"; then
+	echo "OK   maildir_junk directory expansion braces are balanced"
+else
+	echo "FAIL: maildir_junk directory= expansion braces are not balanced"
+	fail=1
+fi
+bad_junk=$(mktemp)
+cat > "$bad_junk" <<'EOF'
+maildir_junk:
+  driver = appendfile
+  directory = ${if exists{$home/Maildir/.Junk}{$home/Maildir/.Junk}{\
+    ${if exists{$home/Maildir/.Spam}{$home/Maildir/.Spam}{\
+      ${if exists{$home/Maildir/.my spam}{$home/Maildir/.my spam}{\
+        ${if exists{$home/Maildir/.my junk}{$home/Maildir/.my junk}{\
+          $home/Maildir/.Junk}}}}}}
+  create_directory
+  maildir_format
+EOF
+if grep -q 'exists{$home/Maildir/.Junk}' "$bad_junk" \
+	&& grep -q 'exists{$home/Maildir/.Spam}' "$bad_junk" \
+	&& grep -q 'exists{$home/Maildir/.my spam}' "$bad_junk" \
+	&& grep -q 'exists{$home/Maildir/.my junk}' "$bad_junk" \
+	&& ! exim_transport_directory_braces_ok "$bad_junk"; then
+	echo "OK   6-brace leftover still matches exists{} greps but fails brace check"
+else
+	echo "FAIL: 6-brace leftover must fail the directory expansion brace check"
+	fail=1
+fi
+rm -f "$bad_junk"
+# Balance, not a fixed closer count: a shorter nested exists must still pass.
+if exim_expansion_braces_ok '${if exists{/a}{/a}{${if exists{/b}{/b}{/c}}}}'; then
+	echo "OK   brace check accepts a shorter balanced nested exists"
+else
+	echo "FAIL: directory expansion brace check must not require a fixed closer count"
+	fail=1
+fi
+live_junk=/etc/exim4/conf.d/transport/30_exim4-config_maildir_junk
+if [[ -f "$live_junk" ]]; then
+	if exim_transport_directory_braces_ok "$live_junk"; then
+		echo "OK   installed maildir_junk directory expansion braces are balanced"
+	else
+		echo "FAIL: installed $live_junk directory= braces are not balanced"
+		fail=1
+	fi
 fi
 if grep -q 'spam_score_int}{30}' "$ROOT"/config-templates/check_data_acl \
 	&& grep -q 'X-SA-Status: Yes' "$ROOT"/config-templates/check_data_acl \
