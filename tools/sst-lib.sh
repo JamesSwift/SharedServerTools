@@ -120,6 +120,76 @@ sst_ensure_site_user() {
 	fi
 }
 
+# Interactive: ask which hostname visitors should land on. Sets globals
+# SST_CANONICAL_HOST and SST_OTHER_HOST. No default — the operator must pick.
+sst_prompt_canonical_hostname() {
+	local domain=$1
+	local reply
+	while true; do
+		echo
+		echo "Which hostname should visitors land on for ${domain}?"
+		echo "  W = www.${domain}  (bare ${domain} will 301 to www.${domain})"
+		echo "  B = ${domain}      (www.${domain} will 301 to ${domain})"
+		read -p "Enter W or B: " -n 1 -r reply
+		echo
+		case "$reply" in
+			[Ww])
+				SST_CANONICAL_HOST="www.${domain}"
+				SST_OTHER_HOST="${domain}"
+				return 0
+				;;
+			[Bb])
+				SST_CANONICAL_HOST="${domain}"
+				SST_OTHER_HOST="www.${domain}"
+				return 0
+				;;
+			*) echo "Please answer W or B." ;;
+		esac
+	done
+}
+
+# Interactive: ask whether plain HTTP should be 301'd to HTTPS on the canonical
+# hostname. Default Yes. Sets global SST_FORCE_HTTPS to 1 or 0.
+sst_prompt_force_https() {
+	local reply
+	read -p "Redirect all HTTP traffic on the canonical hostname to HTTPS? [Y/n] " -n 1 -r reply
+	echo
+	if [[ $reply =~ ^[Nn]$ ]]; then
+		SST_FORCE_HTTPS=0
+	else
+		SST_FORCE_HTTPS=1
+	fi
+}
+
+# Materialise nginx-website.template into ${SST_NGINX_AVAILABLE}/${domain}.
+# Args: domain username doc_root canonical_host other_host force_https(0|1)
+sst_write_site_config() {
+	local domain=$1
+	local username=$2
+	local doc_root=$3
+	local canonical=$4
+	local other=$5
+	local force_https=$6
+	local dest="${SST_NGINX_AVAILABLE}/${domain}"
+	if [[ -z "${SCRIPT_DIR:-}" ]]; then
+		sst_die "sst_write_site_config: SCRIPT_DIR is not set."
+	fi
+	cp "${SCRIPT_DIR}/templates/nginx-website.template" "$dest" \
+		|| sst_die "Could not write ${dest}."
+	sed -i "s/__USERNAME__/${username}/g" "$dest"
+	sed -i "s#__DOC_ROOT__#${doc_root}#g" "$dest"
+	sed -i "s/__DOMAIN__/${domain}/g" "$dest"
+	sed -i "s/__CANONICAL_HOST__/${canonical}/g" "$dest"
+	sed -i "s/__OTHER_HOST__/${other}/g" "$dest"
+	if [[ "$force_https" == "1" ]]; then
+		# Keep the force-HTTPS line (strip only the toggle prefix); the SSL
+		# #__COMMENT__ switch continues to gate it until a cert is installed.
+		sed -i 's/#__FORCE_HTTPS__ //g' "$dest"
+	else
+		sed -i '/#__FORCE_HTTPS__/d' "$dest"
+	fi
+}
+
 # nginx (www-data) needs group read on this user's ~/www.
 sst_nginx_join_owner_group() {
 	local username=$1

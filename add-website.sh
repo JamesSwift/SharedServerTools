@@ -51,22 +51,14 @@ if [[ -f "${SST_NGINX_AVAILABLE}/${domain}" ]]; then
 	read -p "Do you wish to reset the nginx config for it to the default state? [N/y]" -n 1 -r
 	echo
 	if [[ $REPLY =~ ^[Yy]$ ]]; then
-		read -p "Do you want to use www.${domain} as the primary domain? [Y/n]" -n 1 -r
-		echo
-		if [[ $REPLY =~ ^[Nn]$ ]]; then
-			template="${SCRIPT_DIR}/templates/nginx-website.template"
-		else
-			echo "Setting up redirect to www."
-			template="${SCRIPT_DIR}/templates/nginx-website-www.template"
-		fi
+		sst_prompt_canonical_hostname "$domain"
+		sst_prompt_force_https
 
 		echo "Resetting config. By default SSL is DISABLED, so you may wish to re-enable it later when asked."
 		echo
 		rm -f "${SST_NGINX_AVAILABLE}/${domain}"
-		cp "$template" "${SST_NGINX_AVAILABLE}/${domain}"
-		sed -i "s/__USERNAME__/${username}/g" "${SST_NGINX_AVAILABLE}/${domain}"
-		sed -i "s#__DOC_ROOT__#${DOC_ROOT}#g" "${SST_NGINX_AVAILABLE}/${domain}"
-		sed -i "s/__DOMAIN__/${domain}/g" "${SST_NGINX_AVAILABLE}/${domain}"
+		sst_write_site_config "$domain" "$username" "$DOC_ROOT" \
+			"$SST_CANONICAL_HOST" "$SST_OTHER_HOST" "$SST_FORCE_HTTPS"
 	fi
 	sst_install_php_fpm_pool "$username"
 	service "$(sst_php_fpm_service)" reload || sst_die "php-fpm reload failed."
@@ -110,19 +102,11 @@ else
 		chmod +x .git/hooks/post-receive
 	fi
 
-	read -p "Do you want to use www.${domain} as the primary domain? [Y/n]" -n 1 -r
-	echo
-	if [[ $REPLY =~ ^[Nn]$ ]]; then
-		template="${SCRIPT_DIR}/templates/nginx-website.template"
-	else
-		echo "Setting up redirect to www."
-		template="${SCRIPT_DIR}/templates/nginx-website-www.template"
-	fi
+	sst_prompt_canonical_hostname "$domain"
+	sst_prompt_force_https
 
-	cp "$template" "${SST_NGINX_AVAILABLE}/${domain}"
-	sed -i "s/__USERNAME__/${username}/g" "${SST_NGINX_AVAILABLE}/${domain}"
-	sed -i "s#__DOC_ROOT__#${DOC_ROOT}#g" "${SST_NGINX_AVAILABLE}/${domain}"
-	sed -i "s/__DOMAIN__/${domain}/g" "${SST_NGINX_AVAILABLE}/${domain}"
+	sst_write_site_config "$domain" "$username" "$DOC_ROOT" \
+		"$SST_CANONICAL_HOST" "$SST_OTHER_HOST" "$SST_FORCE_HTTPS"
 
 	mkdir -p "/home/${username}/www"
 	chown -R "${username}:${username}" "/home/${username}/www"

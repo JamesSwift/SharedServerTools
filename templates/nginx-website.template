@@ -2,13 +2,38 @@
 #__OWNER__=__USERNAME__
 #__DIR__=__DOC_ROOT__
 
+# Redirect the non-canonical hostname to the canonical one, preserving scheme.
+# $scheme (not a hard-coded https) is used so certbot --webroot keeps working
+# before any TLS cert exists; the force-HTTPS behaviour is applied in the
+# canonical server block below, which only kicks in once SSL is enabled.
+server {
+	listen 80;
+	listen [::]:80;
+
+#__COMMENT__	listen 443 ssl; #__COMMENT_LINE__
+#__COMMENT__	listen [::]:443 ssl; #__COMMENT_LINE__
+#__COMMENT__	http2 on; #__COMMENT_LINE__
+#__COMMENT__	ssl_certificate /etc/letsencrypt/live/__SSL_DOMAIN__/fullchain.pem; #__COMMENT_LINE__
+#__COMMENT__	ssl_certificate_key /etc/letsencrypt/live/__SSL_DOMAIN__/privkey.pem; #__COMMENT_LINE__
+
+	include snippets/ssl-params.conf;
+
+	server_name __OTHER_HOST__;
+
+	access_log /home/__USERNAME__/www/__DOMAIN__.access.log;
+	error_log /home/__USERNAME__/www/__DOMAIN__.error.log;
+
+	return 301 $scheme://__CANONICAL_HOST__$request_uri;
+}
+
+# Canonical hostname serves content. If add-website was asked to force HTTPS,
+# the if-return below is uncommented at the same time as the SSL #__COMMENT__
+# switch — so HTTP traffic is 301'd to HTTPS only once a cert is in place.
 server {
 	set $php_socket unix:/run/php/__USERNAME__.sock;
 
 	listen 80;
 	listen [::]:80;
-
-	# SSL configuration
 
 #__COMMENT__	listen 443 ssl; #__COMMENT_LINE__
 #__COMMENT__	listen [::]:443 ssl; #__COMMENT_LINE__
@@ -22,11 +47,12 @@ server {
 
 	index index.html index.php;
 
-	server_name __DOMAIN__;
+	server_name __CANONICAL_HOST__;
 
 	access_log /home/__USERNAME__/www/__DOMAIN__.access.log;
 	error_log /home/__USERNAME__/www/__DOMAIN__.error.log;
 
+#__FORCE_HTTPS__ #__COMMENT__	if ($scheme = http) { return 301 https://__CANONICAL_HOST__$request_uri; } #__COMMENT_LINE__
 
 	#######
 	# Rewrite URIs
@@ -39,35 +65,34 @@ server {
 			allow all;
 		}
 
-        # deny access to dot files
-        location ~ /\. {
-                deny all;
-        }
+	# deny access to dot files
+	location ~ /\. {
+		deny all;
+	}
 
 	#######
 	# Caching
 
-        location ~*  \.(jpg|jpeg|png|gif|ico|css|js)$ {
-                expires 365d;
-        }
+	location ~*  \.(jpg|jpeg|png|gif|ico|css|js)$ {
+		expires 365d;
+	}
 
 	#######
 	# Default routes
 
-        location / {
+	location / {
 
-                # Attempt to serve request as file, a directory,
-                # then fall back to displaying a 404.
-                try_files $uri $uri/ =404;
-        }
+		# Attempt to serve request as file, a directory,
+		# then fall back to displaying a 404.
+		try_files $uri $uri/ =404;
+	}
 
 	######
 	# PHP Config
 
-        location ~ \.php$ {
-                include snippets/fastcgi-php.conf;
-                fastcgi_pass $php_socket;
-        }
+	location ~ \.php$ {
+		include snippets/fastcgi-php.conf;
+		fastcgi_pass $php_socket;
+	}
 
 }
-
