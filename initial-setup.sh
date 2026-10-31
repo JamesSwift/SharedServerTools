@@ -64,6 +64,10 @@ echo "================"
 echo "Account Security"
 echo "================"
 echo
+echo "Applying conservative umask / home-mode defaults (umask 027, home 0750)"
+echo "so new accounts cannot read each other's files by default."
+sst_apply_umask_defaults
+echo
 echo "If your installation of ubuntu came with a default root password, it should be changed."
 read -p "Would you like to do this now? [y/N]" -n 1 -r
 echo
@@ -90,10 +94,15 @@ then
 		adduser "$new_username" || sst_die "adduser ${new_username} failed."
 		echo
 		sst_add_admin_groups "$new_username"
+		if [[ -d "/home/${new_username}" ]]; then
+			chmod 0750 "/home/${new_username}" || true
+		fi
 	fi
 	echo
 	echo
 fi
+
+sst_tighten_existing_homes
 
 
 echo "It is also bad practice to allow root ssh access (as this is the most common point of attack)."

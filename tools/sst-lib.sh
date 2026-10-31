@@ -221,6 +221,68 @@ replace_config_param() {
 	return 0
 }
 
+# Multi-user hosts: narrow the default umask and new-home mode so one account
+# cannot drive-by read another's files. Picks umask 027 (files 640 / dirs 750)
+# which still lets www-data read site files via the per-user group that
+# sst_nginx_join_owner_group joins. USERGROUPS_ENAB is disabled so pam_umask
+# does not relax the group bits for user-private-group accounts.
+sst_apply_umask_defaults() {
+	if [[ -f /etc/login.defs ]]; then
+		replace_config_param /etc/login.defs UMASK 027
+		replace_config_param /etc/login.defs HOME_MODE 0750
+		replace_config_param /etc/login.defs USERGROUPS_ENAB no
+	fi
+	if [[ -f /etc/adduser.conf ]]; then
+		# adduser.conf uses KEY=VALUE, so replace_config_param can't drive it.
+		if grep -qE '^[[:space:]]*#?[[:space:]]*DIR_MODE=' /etc/adduser.conf; then
+			sed -i -E 's|^[[:space:]]*#?[[:space:]]*DIR_MODE=.*$|DIR_MODE=0750|' /etc/adduser.conf
+		else
+			echo "DIR_MODE=0750" >> /etc/adduser.conf
+		fi
+	fi
+}
+
+# Offer to chmod existing /home/* directories to 0750. Idempotent — anything
+# already 0750 or stricter is left alone. Pre-existing accounts created before
+# HOME_MODE/DIR_MODE were tightened often end up at 0755.
+sst_tighten_existing_homes() {
+	local entry name current
+	local -a candidates=()
+	for entry in /home/*; do
+		[[ -d "$entry" ]] || continue
+		name=$(basename "$entry")
+		case "$name" in
+			lost+found|.*) continue ;;
+		esac
+		current=$(stat -c '%a' "$entry")
+		# Anything that grants "other" or extra "group" bits beyond rx is a candidate.
+		case "$current" in
+			700|750|500|550|000) ;;
+			*) candidates+=("${entry}|${current}") ;;
+		esac
+	done
+	if [[ ${#candidates[@]} -eq 0 ]]; then
+		return 0
+	fi
+	echo
+	echo "These home directories are more permissive than 0750:"
+	local item path mode
+	for item in "${candidates[@]}"; do
+		path=${item%|*}
+		mode=${item##*|}
+		printf '  %s  (currently %s)\n' "$path" "$mode"
+	done
+	echo
+	read -p "Chmod them to 0750 so other users cannot read them? [y/N]" -n 1 -r
+	echo
+	if [[ $REPLY =~ ^[Yy]$ ]]; then
+		for item in "${candidates[@]}"; do
+			path=${item%|*}
+			chmod 0750 "$path" || true
+		done
+	fi
+}
+
 # args: destination_file, config-templates file
 apply_template() {
 	local dest=$1
