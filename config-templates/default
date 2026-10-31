@@ -6,6 +6,7 @@ server {
 	# SSL configuration
 #__COMMENT__ 		listen 443 ssl default_server;#__COMMENT_LINE__
 #__COMMENT__		listen [::]:443 ssl default_server;#__COMMENT_LINE__
+#__COMMENT__		http2 on;#__COMMENT_LINE__
 #__COMMENT__		include snippets/ssl-params.conf;#__COMMENT_LINE__
 
 #__COMMENT__		ssl_certificate /etc/letsencrypt/live/__HOSTNAME_FULL__/fullchain.pem;#__COMMENT_LINE__
