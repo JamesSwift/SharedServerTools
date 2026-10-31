@@ -258,6 +258,7 @@ fi
 
 apply_template /etc/nginx/snippets/ssl-params.conf ssl-params.conf
 apply_template /etc/nginx/nginx.conf nginx.conf
+apply_template /etc/logrotate.d/sharedservertools-sites logrotate-sites
 
 if grep -q "#__SharedServerTools__" "${SST_NGINX_AVAILABLE}/default"
 then
