@@ -8,6 +8,12 @@
 	create 0640 www-data www-data
 	sharedscripts
 	postrotate
+		# Let each site owner read the logs in their own ~/www/ (group = the
+		# group of that www directory, i.e. the user). Mode 0640 keeps others out.
+		for f in /home/*/www/*.log; do
+			[ -f "$f" ] || continue
+			chgrp "$(stat -c %G "$(dirname "$f")")" "$f" && chmod 0640 "$f"
+		done
 		if [ -f /run/nginx.pid ]; then
 			kill -USR1 "$(cat /run/nginx.pid)"
 		fi
