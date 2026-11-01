@@ -119,6 +119,7 @@ else
 	service "$(sst_php_fpm_service)" reload || sst_die "php-fpm reload failed."
 	echo "Reloading nginx configuration:"
 	service nginx reload || sst_die "nginx reload failed. Check: nginx -t"
+	sst_fix_site_log_perms
 	sst_fail2ban_reload_nginx
 fi
 

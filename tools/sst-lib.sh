@@ -207,6 +207,16 @@ sst_fail2ban_reload_nginx() {
 		|| true
 }
 
+# nginx creates per-site logs as root:root; let the site owner read them
+# (same ownership the logrotate postrotate step applies).
+sst_fix_site_log_perms() {
+	local f
+	for f in /home/*/www/*.log; do
+		[[ -f "$f" ]] || continue
+		chgrp "$(stat -c %G "$(dirname "$f")")" "$f" && chmod 0640 "$f"
+	done
+}
+
 # Reverse sst_nginx_join_owner_group so userdel can remove the group.
 sst_nginx_leave_owner_group() {
 	local username=$1
